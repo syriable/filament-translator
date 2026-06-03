@@ -11,7 +11,7 @@ trait ResolvesExporterLabels
 {
     use ResolvesConventionNamespace;
 
-    public static function resolveLabel(string $key, array $replace = [], Countable|float|int|null $number = null, bool $allowNull = false, ?PageLabelContext $pageLabelContext = null, ?string $pageLabelContextKey = null): mixed
+    public static function resolveLabel(string $key, array $replace = [], Countable | float | int | null $number = null, bool $allowNull = false, ?PageLabelContext $pageLabelContext = null, ?string $pageLabelContextKey = null): mixed
     {
         $conventionKey = str(static::resolveConventionNamespace())
             ->when(filled($pageLabelContextKey))->append(".{$pageLabelContextKey}")
@@ -55,7 +55,7 @@ trait ResolvesExporterLabels
             );
 
             if (filled($failedBody)) {
-                $body .= ' '.$failedBody;
+                $body .= ' ' . $failedBody;
             }
         }
 

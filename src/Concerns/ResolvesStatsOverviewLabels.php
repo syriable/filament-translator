@@ -2,7 +2,6 @@
 
 namespace Syriable\Filament\Plugins\Translator\Concerns;
 
-use Syriable\Filament\Plugins\Translator\Concerns\ResolvesWidgetLabels;
 use Syriable\Filament\Plugins\Translator\Filament\Widgets\StatsOverviewWidget;
 
 /**

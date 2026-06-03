@@ -17,12 +17,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Illuminate\Support\Stringable;
 use Livewire\Livewire;
+use ReflectionProperty;
 use Syriable\Filament\Plugins\Translator\Contracts\TranslatesConventionally;
 use Syriable\Filament\Plugins\Translator\Enums\ActionScope;
 use Syriable\Filament\Plugins\Translator\Enums\PageLabelContext;
 use Syriable\Filament\Plugins\Translator\Enums\SchemaScope;
 use Syriable\Filament\Plugins\Translator\Enums\TableScope;
-use ReflectionProperty;
 
 /**
  * Central registry that wires Filament component defaults to convention-based lang lookups.
@@ -412,14 +412,14 @@ class ConventionRegistry
             $component
                 ->options(static function (Forms\Components\Radio $component, string $model) {
                     /** @var class-string<Model> $cast */
-                    $cast = (new $model)->getCasts()[$component->getName()] ?? null;
+                    $cast = (new $model())->getCasts()[$component->getName()] ?? null;
 
                     if (! $cast) {
                         return null;
                     }
 
                     if (str($cast)->startsWith(AsEnumCollection::class)) {
-                        $cast = str($cast)->after(AsEnumCollection::class.':')->toString();
+                        $cast = str($cast)->after(AsEnumCollection::class . ':')->toString();
                     }
 
                     if (! is_subclass_of($cast, BackedEnum::class)) {
@@ -434,14 +434,14 @@ class ConventionRegistry
                     }
 
                     /** @var class-string<Model> $cast */
-                    $cast = (new $model)->getCasts()[$component->getName()] ?? null;
+                    $cast = (new $model())->getCasts()[$component->getName()] ?? null;
 
                     if (! $cast) {
                         return [];
                     }
 
                     if (str($cast)->startsWith(AsEnumCollection::class)) {
-                        $cast = str($cast)->after(AsEnumCollection::class.':')->toString();
+                        $cast = str($cast)->after(AsEnumCollection::class . ':')->toString();
                     }
 
                     if (! is_subclass_of($cast, BackedEnum::class)) {
@@ -452,7 +452,7 @@ class ConventionRegistry
                         return [];
                     }
 
-                    return array_reduce($cast::cases(), function (array $carry, HasDescription&BackedEnum $case): array {
+                    return array_reduce($cast::cases(), function (array $carry, HasDescription & BackedEnum $case): array {
                         if (filled($description = $case->getDescription())) {
                             $carry[$case->value ?? $case->name] = $description;
                         }
@@ -465,14 +465,14 @@ class ConventionRegistry
         Forms\Components\Select::configureUsing(static function (Forms\Components\Select $component) {
             $component->options(static function (Forms\Components\Select $component, string $model) {
                 /** @var class-string<Model> $cast */
-                $cast = (new $model)->getCasts()[$component->getName()] ?? null;
+                $cast = (new $model())->getCasts()[$component->getName()] ?? null;
 
                 if (! $cast) {
                     return null;
                 }
 
                 if (str($cast)->startsWith(AsEnumCollection::class)) {
-                    $cast = str($cast)->after(AsEnumCollection::class.':')->toString();
+                    $cast = str($cast)->after(AsEnumCollection::class . ':')->toString();
                 }
 
                 if (! is_subclass_of($cast, BackedEnum::class)) {
@@ -486,14 +486,14 @@ class ConventionRegistry
         Forms\Components\ToggleButtons::configureUsing(static function (Forms\Components\ToggleButtons $component) {
             $component->options(static function (Forms\Components\ToggleButtons $component, string $model) {
                 /** @var class-string<Model> $cast */
-                $cast = (new $model)->getCasts()[$component->getName()] ?? null;
+                $cast = (new $model())->getCasts()[$component->getName()] ?? null;
 
                 if (! $cast) {
                     return null;
                 }
 
                 if (str($cast)->startsWith(AsEnumCollection::class)) {
-                    $cast = str($cast)->after(AsEnumCollection::class.':')->toString();
+                    $cast = str($cast)->after(AsEnumCollection::class . ':')->toString();
                 }
 
                 if (! is_subclass_of($cast, BackedEnum::class)) {
@@ -541,7 +541,7 @@ class ConventionRegistry
                 continue;
             }
 
-            $tableColumn::configureUsing(static function (Tables\Columns\Column|Tables\Columns\ColumnGroup $column) use ($columnLabelAttributes) {
+            $tableColumn::configureUsing(static function (Tables\Columns\Column | Tables\Columns\ColumnGroup $column) use ($columnLabelAttributes) {
                 foreach ($columnLabelAttributes as $method => $allowNull) {
                     if (method_exists($column, $method)) {
                         $column->{$method}(static function (Tables\Columns\Column $column) use ($method, $allowNull) {
@@ -605,14 +605,14 @@ class ConventionRegistry
                 $model = $table->getModel();
 
                 /** @var class-string<Model> $cast */
-                $cast = (new $model)->getCasts()[$filter->getName()] ?? null;
+                $cast = (new $model())->getCasts()[$filter->getName()] ?? null;
 
                 if (! $cast) {
                     return [];
                 }
 
                 if (str($cast)->startsWith(AsEnumCollection::class)) {
-                    $cast = str($cast)->after(AsEnumCollection::class.':')->toString();
+                    $cast = str($cast)->after(AsEnumCollection::class . ':')->toString();
                 }
 
                 if (! is_subclass_of($cast, BackedEnum::class)) {
@@ -632,7 +632,7 @@ class ConventionRegistry
                         /** @var Tables\Filters\QueryBuilder $filter */
                         $filter = $constraint->getFilter();
 
-                        return ConventionRegistry::resolveTableLabel($filter, TableScope::Filters, "constraints.{$constraint->getName()}.".Str::snake($method), allowNull: $allowNull);
+                        return ConventionRegistry::resolveTableLabel($filter, TableScope::Filters, "constraints.{$constraint->getName()}." . Str::snake($method), allowNull: $allowNull);
                     });
                 }
             }
@@ -673,7 +673,7 @@ class ConventionRegistry
      */
     protected static function prebuiltComponent(string $class, string $name): object
     {
-        $cacheKey = $class.'|'.$name;
+        $cacheKey = $class . '|' . $name;
 
         return static::$prebuiltComponentCache[$cacheKey] ??= tap(
             app($class, ['name' => $name]),
@@ -683,7 +683,7 @@ class ConventionRegistry
 
     protected static function translatorHas(string $key): bool
     {
-        $cacheKey = app()->getLocale().'|'.$key;
+        $cacheKey = app()->getLocale() . '|' . $key;
 
         return static::$translatorHasCache[$cacheKey] ??= app('translator')->has($key);
     }
@@ -691,7 +691,7 @@ class ConventionRegistry
     protected static function sanitizeComponentPath(string $name, array $namespace = []): string
     {
         if ($namespace) {
-            $prefix = implode('.', $namespace).'.';
+            $prefix = implode('.', $namespace) . '.';
         } else {
             $prefix = '';
         }
@@ -713,7 +713,7 @@ class ConventionRegistry
             ->prepend($prefix);
     }
 
-    protected static function lookupAbsoluteKey(string $topLevel, string $key, array $replace = [], Countable|float|int|null $number = null, bool $allowNull = false): ?string
+    protected static function lookupAbsoluteKey(string $topLevel, string $key, array $replace = [], Countable | float | int | null $number = null, bool $allowNull = false): ?string
     {
         if ($topLevel) {
             $conventionKey = "{$topLevel}.{$key}";
@@ -732,7 +732,7 @@ class ConventionRegistry
         return __($conventionKey, $replace);
     }
 
-    public static function resolveActionLabel(Actions\Action $actionComponent, ?ActionScope $group, string $key, array $replace = [], Countable|float|int|null $number = null, bool $allowNull = false): ?string
+    public static function resolveActionLabel(Actions\Action $actionComponent, ?ActionScope $group, string $key, array $replace = [], Countable | float | int | null $number = null, bool $allowNull = false): ?string
     {
         $livewire = $actionComponent->getLivewire();
 
@@ -770,11 +770,11 @@ class ConventionRegistry
             ];
 
             foreach ($formActionTypes as $type) {
-                $method = 'get'.Str::studly($type);
+                $method = 'get' . Str::studly($type);
 
                 if (
                     method_exists($parentComponent, $method)
-                    && collect($parentComponent->{'get'.Str::studly($type)}())
+                    && collect($parentComponent->{'get' . Str::studly($type)}())
                         ->map(static function (Actions\Action $action) {
                             return $action->getName();
                         })
@@ -958,7 +958,7 @@ class ConventionRegistry
         return $livewire::resolveLabel($group ? "{$normalizedName}.{$group->value}.{$key}" : "{$normalizedName}.{$key}", replace: $replace, number: $number, allowNull: $allowNull, pageLabelContext: PageLabelContext::Actions);
     }
 
-    public static function resolveSchemaLabel(Schemas\Components\Component|Schemas\Schema $schemaComponent, ?SchemaScope $group, string $key, array $replace = [], Countable|float|int|null $number = null, bool $allowNull = false): ?string
+    public static function resolveSchemaLabel(Schemas\Components\Component | Schemas\Schema $schemaComponent, ?SchemaScope $group, string $key, array $replace = [], Countable | float | int | null $number = null, bool $allowNull = false): ?string
     {
         $livewire = $schemaComponent->getLivewire();
 
@@ -1233,7 +1233,7 @@ class ConventionRegistry
         );
     }
 
-    public static function resolveTableLabel(Tables\Table|Tables\Columns\Column|Tables\Columns\ColumnGroup|Tables\Columns\Summarizers\Summarizer|Tables\Filters\BaseFilter|Tables\Grouping\Group $tableComponent, ?TableScope $group, string $key, array $replace = [], Countable|float|int|null $number = null, bool $allowNull = false): ?string
+    public static function resolveTableLabel(Tables\Table | Tables\Columns\Column | Tables\Columns\ColumnGroup | Tables\Columns\Summarizers\Summarizer | Tables\Filters\BaseFilter | Tables\Grouping\Group $tableComponent, ?TableScope $group, string $key, array $replace = [], Countable | float | int | null $number = null, bool $allowNull = false): ?string
     {
         $livewire = $tableComponent->getLivewire();
 

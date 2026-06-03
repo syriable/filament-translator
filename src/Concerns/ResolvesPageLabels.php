@@ -20,7 +20,7 @@ trait ResolvesPageLabels
 {
     use ResolvesConventionNamespace;
 
-    public static function resolveLabel(string $key, array $replace = [], Countable|float|int|null $number = null, bool $allowNull = false, ?PageLabelContext $pageLabelContext = null, ?string $pageLabelContextKey = null): mixed
+    public static function resolveLabel(string $key, array $replace = [], Countable | float | int | null $number = null, bool $allowNull = false, ?PageLabelContext $pageLabelContext = null, ?string $pageLabelContextKey = null): mixed
     {
         $conventionKey = str(static::resolveConventionNamespace())
             ->when(filled($pageLabelContextKey))->append(".{$pageLabelContextKey}")
@@ -36,7 +36,7 @@ trait ResolvesPageLabels
         return static::resolveLabel('title', allowNull: true) ?? parent::getTitle();
     }
 
-    public function getSubheading(): string|Htmlable|null
+    public function getSubheading(): string | Htmlable | null
     {
         return static::resolveLabel('subheading', allowNull: true) ?? parent::getSubheading();
     }
@@ -46,7 +46,7 @@ trait ResolvesPageLabels
         return static::resolveLabel('navigation_label', allowNull: true) ?? parent::getNavigationLabel();
     }
 
-    public static function getNavigationGroup(): string|UnitEnum|null
+    public static function getNavigationGroup(): string | UnitEnum | null
     {
         return static::resolveLabel('navigation_group', allowNull: true) ?? parent::getNavigationGroup();
     }

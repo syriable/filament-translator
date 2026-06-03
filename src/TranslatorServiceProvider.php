@@ -28,7 +28,7 @@ class TranslatorServiceProvider extends PackageServiceProvider
 
     protected function bootMacros(): void
     {
-        $conventionKeyMacro = function (string|Closure $key, bool|Closure $isAbsolute = false): Filament\Support\Components\ViewComponent|Filament\Support\Components\Component {
+        $conventionKeyMacro = function (string | Closure $key, bool | Closure $isAbsolute = false): Filament\Support\Components\ViewComponent | Filament\Support\Components\Component {
             /** @var Filament\Support\Components\ViewComponent|Filament\Support\Components\Component $this */
             $this->conventionKey = $key;
             $this->isConventionKeyAbsolute = $isAbsolute;
@@ -41,7 +41,7 @@ class TranslatorServiceProvider extends PackageServiceProvider
             return $this->evaluate($this->conventionKey ?? null);
         };
 
-        $conventionKeyAbsoluteMacro = function (bool|Closure $condition): static {
+        $conventionKeyAbsoluteMacro = function (bool | Closure $condition): static {
             /** @var Filament\Support\Components\ViewComponent|Filament\Support\Components\Component $this */
             $this->isConventionKeyAbsolute = $condition;
 

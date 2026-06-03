@@ -55,7 +55,7 @@ trait ResolvesConventionNamespace
      * Resolve a fully-qualified convention key to its translation, falling back to null when the
      * key is missing and either nulls are allowed or the app is running in production.
      */
-    protected static function lookupConventionKey(string $conventionKey, array $replace = [], Countable|float|int|null $number = null, bool $allowNull = false): mixed
+    protected static function lookupConventionKey(string $conventionKey, array $replace = [], Countable | float | int | null $number = null, bool $allowNull = false): mixed
     {
         if (! static::conventionKeyExists($conventionKey) && ($allowNull || app()->isProduction())) {
             return null;
@@ -70,7 +70,7 @@ trait ResolvesConventionNamespace
 
     protected static function conventionKeyExists(string $conventionKey): bool
     {
-        $cacheKey = app()->getLocale().'|'.$conventionKey;
+        $cacheKey = app()->getLocale() . '|' . $conventionKey;
 
         return static::$conventionKeyExistenceCache[$cacheKey] ??= app('translator')->has($conventionKey);
     }

@@ -10,9 +10,9 @@ trait ResolvesClusterLabels
 {
     use ResolvesConventionNamespace;
 
-    public static function resolveLabel(string $key, array $replace = [], Countable|float|int|null $number = null, bool $allowNull = false, ?PageLabelContext $pageLabelContext = null, ?string $pageLabelContextKey = null): mixed
+    public static function resolveLabel(string $key, array $replace = [], Countable | float | int | null $number = null, bool $allowNull = false, ?PageLabelContext $pageLabelContext = null, ?string $pageLabelContextKey = null): mixed
     {
-        $conventionKey = static::resolveConventionNamespace().".{$key}";
+        $conventionKey = static::resolveConventionNamespace() . ".{$key}";
 
         return static::lookupConventionKey($conventionKey, $replace, $number, $allowNull);
     }
@@ -22,7 +22,7 @@ trait ResolvesClusterLabels
         return static::resolveLabel('navigation_label') ?? parent::getNavigationLabel();
     }
 
-    public static function getNavigationGroup(): string|UnitEnum|null
+    public static function getNavigationGroup(): string | UnitEnum | null
     {
         return static::resolveLabel('navigation_group') ?? parent::getNavigationGroup();
     }
