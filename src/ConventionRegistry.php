@@ -17,12 +17,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Illuminate\Support\Stringable;
 use Livewire\Livewire;
+use ReflectionProperty;
 use Syriable\Filament\Plugins\Translator\Contracts\TranslatesConventionally;
 use Syriable\Filament\Plugins\Translator\Enums\ActionScope;
 use Syriable\Filament\Plugins\Translator\Enums\PageLabelContext;
 use Syriable\Filament\Plugins\Translator\Enums\SchemaScope;
 use Syriable\Filament\Plugins\Translator\Enums\TableScope;
-use ReflectionProperty;
 
 /**
  * Central registry that wires Filament component defaults to convention-based lang lookups.
@@ -162,10 +162,23 @@ class ConventionRegistry
         'suffix' => true,
     ];
 
+    /**
+     * Cached prebuilt action/filter instances used to read framework default labels,
+     * keyed by "{class}|{name}" so we instantiate + set up each one at most once per request.
+     *
+     * @var array<string, object>
+     */
+    protected static array $prebuiltComponentCache = [];
+
+    /**
+     * Memoized `translator()->has()` results, keyed by "{locale}|{key}".
+     *
+     * @var array<string, bool>
+     */
+    protected static array $translatorHasCache = [];
+
     public function registerDefaults(): void
     {
-        ini_set('max_execution_time', 5);
-
         // Actions:
         $this->wireActionLabels();
         $this->wireExporterLabels();
@@ -197,9 +210,7 @@ class ConventionRegistry
 
                     // Check if the action is a pre-built action, so we can then bind to the pre-built action's method.
                     if ($action::class !== Actions\Action::class) {
-                        $prebuiltAction = app($action::class, ['name' => $action->getName()]);
-
-                        invade($prebuiltAction)->setUp();
+                        $prebuiltAction = ConventionRegistry::prebuiltComponent($action::class, $action->getName());
 
                         $default = invade($prebuiltAction)->{Str::camel($method)};
 
@@ -401,14 +412,14 @@ class ConventionRegistry
             $component
                 ->options(static function (Forms\Components\Radio $component, string $model) {
                     /** @var class-string<Model> $cast */
-                    $cast = (new $model)->getCasts()[$component->getName()] ?? null;
+                    $cast = (new $model())->getCasts()[$component->getName()] ?? null;
 
                     if (! $cast) {
                         return null;
                     }
 
                     if (str($cast)->startsWith(AsEnumCollection::class)) {
-                        $cast = str($cast)->after(AsEnumCollection::class.':')->toString();
+                        $cast = str($cast)->after(AsEnumCollection::class . ':')->toString();
                     }
 
                     if (! is_subclass_of($cast, BackedEnum::class)) {
@@ -423,14 +434,14 @@ class ConventionRegistry
                     }
 
                     /** @var class-string<Model> $cast */
-                    $cast = (new $model)->getCasts()[$component->getName()] ?? null;
+                    $cast = (new $model())->getCasts()[$component->getName()] ?? null;
 
                     if (! $cast) {
                         return [];
                     }
 
                     if (str($cast)->startsWith(AsEnumCollection::class)) {
-                        $cast = str($cast)->after(AsEnumCollection::class.':')->toString();
+                        $cast = str($cast)->after(AsEnumCollection::class . ':')->toString();
                     }
 
                     if (! is_subclass_of($cast, BackedEnum::class)) {
@@ -441,7 +452,7 @@ class ConventionRegistry
                         return [];
                     }
 
-                    return array_reduce($cast::cases(), function (array $carry, HasDescription&BackedEnum $case): array {
+                    return array_reduce($cast::cases(), function (array $carry, HasDescription & BackedEnum $case): array {
                         if (filled($description = $case->getDescription())) {
                             $carry[$case->value ?? $case->name] = $description;
                         }
@@ -454,14 +465,14 @@ class ConventionRegistry
         Forms\Components\Select::configureUsing(static function (Forms\Components\Select $component) {
             $component->options(static function (Forms\Components\Select $component, string $model) {
                 /** @var class-string<Model> $cast */
-                $cast = (new $model)->getCasts()[$component->getName()] ?? null;
+                $cast = (new $model())->getCasts()[$component->getName()] ?? null;
 
                 if (! $cast) {
                     return null;
                 }
 
                 if (str($cast)->startsWith(AsEnumCollection::class)) {
-                    $cast = str($cast)->after(AsEnumCollection::class.':')->toString();
+                    $cast = str($cast)->after(AsEnumCollection::class . ':')->toString();
                 }
 
                 if (! is_subclass_of($cast, BackedEnum::class)) {
@@ -475,14 +486,14 @@ class ConventionRegistry
         Forms\Components\ToggleButtons::configureUsing(static function (Forms\Components\ToggleButtons $component) {
             $component->options(static function (Forms\Components\ToggleButtons $component, string $model) {
                 /** @var class-string<Model> $cast */
-                $cast = (new $model)->getCasts()[$component->getName()] ?? null;
+                $cast = (new $model())->getCasts()[$component->getName()] ?? null;
 
                 if (! $cast) {
                     return null;
                 }
 
                 if (str($cast)->startsWith(AsEnumCollection::class)) {
-                    $cast = str($cast)->after(AsEnumCollection::class.':')->toString();
+                    $cast = str($cast)->after(AsEnumCollection::class . ':')->toString();
                 }
 
                 if (! is_subclass_of($cast, BackedEnum::class)) {
@@ -530,7 +541,7 @@ class ConventionRegistry
                 continue;
             }
 
-            $tableColumn::configureUsing(static function (Tables\Columns\Column|Tables\Columns\ColumnGroup $column) use ($columnLabelAttributes) {
+            $tableColumn::configureUsing(static function (Tables\Columns\Column | Tables\Columns\ColumnGroup $column) use ($columnLabelAttributes) {
                 foreach ($columnLabelAttributes as $method => $allowNull) {
                     if (method_exists($column, $method)) {
                         $column->{$method}(static function (Tables\Columns\Column $column) use ($method, $allowNull) {
@@ -572,9 +583,7 @@ class ConventionRegistry
 
                         // Check if the action is a pre-built action, so we can then bind to the pre-built action's method.
                         if ($shouldRetrievePrebuiltTranslation) {
-                            $prebuiltFilter = app($filter::class, ['name' => $filter->getName()]);
-
-                            invade($prebuiltFilter)->setUp();
+                            $prebuiltFilter = ConventionRegistry::prebuiltComponent($filter::class, $filter->getName());
 
                             $default = invade($prebuiltFilter)->{Str::camel($method)};
 
@@ -596,14 +605,14 @@ class ConventionRegistry
                 $model = $table->getModel();
 
                 /** @var class-string<Model> $cast */
-                $cast = (new $model)->getCasts()[$filter->getName()] ?? null;
+                $cast = (new $model())->getCasts()[$filter->getName()] ?? null;
 
                 if (! $cast) {
                     return [];
                 }
 
                 if (str($cast)->startsWith(AsEnumCollection::class)) {
-                    $cast = str($cast)->after(AsEnumCollection::class.':')->toString();
+                    $cast = str($cast)->after(AsEnumCollection::class . ':')->toString();
                 }
 
                 if (! is_subclass_of($cast, BackedEnum::class)) {
@@ -623,7 +632,7 @@ class ConventionRegistry
                         /** @var Tables\Filters\QueryBuilder $filter */
                         $filter = $constraint->getFilter();
 
-                        return ConventionRegistry::resolveTableLabel($filter, TableScope::Filters, "constraints.{$constraint->getName()}.".Str::snake($method), allowNull: $allowNull);
+                        return ConventionRegistry::resolveTableLabel($filter, TableScope::Filters, "constraints.{$constraint->getName()}." . Str::snake($method), allowNull: $allowNull);
                     });
                 }
             }
@@ -658,10 +667,31 @@ class ConventionRegistry
         }, isImportant: true);
     }
 
+    /**
+     * Resolve (and memoize) a prebuilt action/filter instance so its framework default labels
+     * can be read without re-instantiating and re-running `setUp()` for every label attribute.
+     */
+    protected static function prebuiltComponent(string $class, string $name): object
+    {
+        $cacheKey = $class . '|' . $name;
+
+        return static::$prebuiltComponentCache[$cacheKey] ??= tap(
+            app($class, ['name' => $name]),
+            static fn (object $component) => invade($component)->setUp(),
+        );
+    }
+
+    protected static function translatorHas(string $key): bool
+    {
+        $cacheKey = app()->getLocale() . '|' . $key;
+
+        return static::$translatorHasCache[$cacheKey] ??= app('translator')->has($key);
+    }
+
     protected static function sanitizeComponentPath(string $name, array $namespace = []): string
     {
         if ($namespace) {
-            $prefix = implode('.', $namespace).'.';
+            $prefix = implode('.', $namespace) . '.';
         } else {
             $prefix = '';
         }
@@ -679,11 +709,11 @@ class ConventionRegistry
             ->whenStartsWith('mountedActionSchema', static function (Stringable $normalizedName) {
                 return $normalizedName->after('.'); // Strip until after `mountedActionSchema{index}.`
             })
-            ->replace('.', '->', $name)
+            ->replace('.', '->')
             ->prepend($prefix);
     }
 
-    protected static function lookupAbsoluteKey(string $topLevel, string $key, array $replace = [], Countable|float|int|null $number = null, bool $allowNull = false): ?string
+    protected static function lookupAbsoluteKey(string $topLevel, string $key, array $replace = [], Countable | float | int | null $number = null, bool $allowNull = false): ?string
     {
         if ($topLevel) {
             $conventionKey = "{$topLevel}.{$key}";
@@ -691,7 +721,7 @@ class ConventionRegistry
             $conventionKey = $key;
         }
 
-        if (! app('translator')->has($conventionKey) && ($allowNull || app()->isProduction())) {
+        if (! static::translatorHas($conventionKey) && ($allowNull || app()->isProduction())) {
             return null;
         }
 
@@ -702,7 +732,7 @@ class ConventionRegistry
         return __($conventionKey, $replace);
     }
 
-    public static function resolveActionLabel(Actions\Action $actionComponent, ?ActionScope $group, string $key, array $replace = [], Countable|float|int|null $number = null, bool $allowNull = false): ?string
+    public static function resolveActionLabel(Actions\Action $actionComponent, ?ActionScope $group, string $key, array $replace = [], Countable | float | int | null $number = null, bool $allowNull = false): ?string
     {
         $livewire = $actionComponent->getLivewire();
 
@@ -740,11 +770,11 @@ class ConventionRegistry
             ];
 
             foreach ($formActionTypes as $type) {
-                $method = 'get'.Str::studly($type);
+                $method = 'get' . Str::studly($type);
 
                 if (
                     method_exists($parentComponent, $method)
-                    && collect($parentComponent->{'get'.Str::studly($type)}())
+                    && collect($parentComponent->{'get' . Str::studly($type)}())
                         ->map(static function (Actions\Action $action) {
                             return $action->getName();
                         })
@@ -882,22 +912,26 @@ class ConventionRegistry
             // Only iterate through modal actions if they are already cached. Calling `getModalActions()`
             // would trigger closure evaluation, which may fail if closures have type-hinted parameters
             // (like `Booking $record`) that would be null when the action doesn't have a record set yet.
-            // TODO: Temporarily using `getModalActions()` to test if record is passed correctly
-            foreach ($action->getModalActions() as $modalAction) {
-                if (in_array($modalAction->getName(), $extraModalFooterActionNames, true)) {
-                    continue;
-                }
+            $cachedModalActionsProperty = new ReflectionProperty($action, 'cachedModalActions');
+            $cachedModalActionsProperty->setAccessible(true);
 
-                if (in_array($modalAction->getName(), $builtInModalActionNames, true)) {
-                    continue;
-                }
+            if ($cachedModalActionsProperty->isInitialized($action)) {
+                foreach ($cachedModalActionsProperty->getValue($action) ?? [] as $modalAction) {
+                    if (in_array($modalAction->getName(), $extraModalFooterActionNames, true)) {
+                        continue;
+                    }
 
-                if ($modalAction->getName() === $actionComponentName) {
-                    return [$action, 'modal_actions'];
-                }
+                    if (in_array($modalAction->getName(), $builtInModalActionNames, true)) {
+                        continue;
+                    }
 
-                if ($result = $findParentActionCallback($modalAction, $actionComponentName)) {
-                    return $result;
+                    if ($modalAction->getName() === $actionComponentName) {
+                        return [$action, 'modal_actions'];
+                    }
+
+                    if ($result = $findParentActionCallback($modalAction, $actionComponentName)) {
+                        return $result;
+                    }
                 }
             }
 
@@ -924,7 +958,7 @@ class ConventionRegistry
         return $livewire::resolveLabel($group ? "{$normalizedName}.{$group->value}.{$key}" : "{$normalizedName}.{$key}", replace: $replace, number: $number, allowNull: $allowNull, pageLabelContext: PageLabelContext::Actions);
     }
 
-    public static function resolveSchemaLabel(Schemas\Components\Component|Schemas\Schema $schemaComponent, ?SchemaScope $group, string $key, array $replace = [], Countable|float|int|null $number = null, bool $allowNull = false): ?string
+    public static function resolveSchemaLabel(Schemas\Components\Component | Schemas\Schema $schemaComponent, ?SchemaScope $group, string $key, array $replace = [], Countable | float | int | null $number = null, bool $allowNull = false): ?string
     {
         $livewire = $schemaComponent->getLivewire();
 
@@ -1199,7 +1233,7 @@ class ConventionRegistry
         );
     }
 
-    public static function resolveTableLabel(Tables\Table|Tables\Columns\Column|Tables\Columns\ColumnGroup|Tables\Columns\Summarizers\Summarizer|Tables\Filters\BaseFilter|Tables\Grouping\Group $tableComponent, ?TableScope $group, string $key, array $replace = [], Countable|float|int|null $number = null, bool $allowNull = false): ?string
+    public static function resolveTableLabel(Tables\Table | Tables\Columns\Column | Tables\Columns\ColumnGroup | Tables\Columns\Summarizers\Summarizer | Tables\Filters\BaseFilter | Tables\Grouping\Group $tableComponent, ?TableScope $group, string $key, array $replace = [], Countable | float | int | null $number = null, bool $allowNull = false): ?string
     {
         $livewire = $tableComponent->getLivewire();
 

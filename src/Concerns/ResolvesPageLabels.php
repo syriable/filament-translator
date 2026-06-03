@@ -18,45 +18,17 @@ use UnitEnum;
  */
 trait ResolvesPageLabels
 {
-    public static function resolveLabel(string $key, array $replace = [], Countable|float|int|null $number = null, bool $allowNull = false, ?PageLabelContext $pageLabelContext = null, ?string $pageLabelContextKey = null): mixed
+    use ResolvesConventionNamespace;
+
+    public static function resolveLabel(string $key, array $replace = [], Countable | float | int | null $number = null, bool $allowNull = false, ?PageLabelContext $pageLabelContext = null, ?string $pageLabelContextKey = null): mixed
     {
-        $namespace = str(static::class);
-
-        $pathAliases = TranslatorPlugin::get()->getPathAliases();
-
-        if ($namespace->contains(array_keys($pathAliases))) {
-            $namespace = $namespace->replace(
-                array_keys($pathAliases),
-                array_values($pathAliases),
-            );
-        } else {
-            $namespace = $namespace
-                ->after('Filament')
-                ->prepend('Filament')
-                ->trim('\\');
-        }
-
-        $namespace = $namespace
-            ->kebab()
-            ->replace('\\-', '\\')
-            ->replace('\\', '/')
-            ->rtrim('/');
-
-        $conventionKey = str($namespace)
+        $conventionKey = str(static::resolveConventionNamespace())
             ->when(filled($pageLabelContextKey))->append(".{$pageLabelContextKey}")
             ->when(blank($pageLabelContextKey) && $pageLabelContext, fn (Stringable $str) => $str->append(".{$pageLabelContext->value}"))
             ->append(".{$key}")
             ->toString();
 
-        if (! app('translator')->has($conventionKey) && ($allowNull || app()->isProduction())) {
-            return null;
-        }
-
-        if ($number !== null) {
-            return trans_choice($conventionKey, $number, $replace);
-        }
-
-        return __($conventionKey, $replace);
+        return static::lookupConventionKey($conventionKey, $replace, $number, $allowNull);
     }
 
     public function getTitle(): string
@@ -64,7 +36,7 @@ trait ResolvesPageLabels
         return static::resolveLabel('title', allowNull: true) ?? parent::getTitle();
     }
 
-    public function getSubheading(): string|Htmlable|null
+    public function getSubheading(): string | Htmlable | null
     {
         return static::resolveLabel('subheading', allowNull: true) ?? parent::getSubheading();
     }
@@ -74,7 +46,7 @@ trait ResolvesPageLabels
         return static::resolveLabel('navigation_label', allowNull: true) ?? parent::getNavigationLabel();
     }
 
-    public static function getNavigationGroup(): string|UnitEnum|null
+    public static function getNavigationGroup(): string | UnitEnum | null
     {
         return static::resolveLabel('navigation_group', allowNull: true) ?? parent::getNavigationGroup();
     }

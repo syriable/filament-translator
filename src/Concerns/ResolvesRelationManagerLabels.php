@@ -13,7 +13,7 @@ use Syriable\Filament\Plugins\Translator\Enums\PageLabelContext;
  */
 trait ResolvesRelationManagerLabels
 {
-    public static function resolveLabel(string $key, array $replace = [], Countable|float|int|null $number = null, bool $allowNull = false, ?PageLabelContext $pageLabelContext = null, ?string $pageLabelContextKey = null): mixed
+    public static function resolveLabel(string $key, array $replace = [], Countable | float | int | null $number = null, bool $allowNull = false, ?PageLabelContext $pageLabelContext = null, ?string $pageLabelContextKey = null): mixed
     {
         $resourceClass = static::resolveResourceClass();
 
@@ -55,7 +55,7 @@ trait ResolvesRelationManagerLabels
             ->afterLast('\\')
             ->toString();
 
-        $resourceClassName = Str::singular($folderName).'Resource';
+        $resourceClassName = Str::singular($folderName) . 'Resource';
         $resourceClass = "{$resourceNamespace}\\{$resourceClassName}";
 
         if (class_exists($resourceClass)) {

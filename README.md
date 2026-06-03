@@ -83,7 +83,7 @@ use Syriable\Filament\Plugins\Translator\ConventionRegistry;
 app(ConventionRegistry::class)->registerDefaults();
 ```
 
-Register `TranslatorPlugin` on a panel with `pathAliases()` when you need namespace remapping; aliases are read from the active plugin during label resolution.
+Register `TranslatorPlugin` on a panel with `pathAliases()` when you need namespace remapping; aliases are read from the active plugin during label resolution. When the plugin is not registered on the active panel, resolution falls back to empty path aliases instead of throwing, so guest routes keep working.
 
 ## What gets translated
 
@@ -98,6 +98,10 @@ Register `TranslatorPlugin` on a panel with `pathAliases()` when you need namesp
 | **Filters**                | Label, indicator, placeholder, true/false labels, constraint labels                                                                                                                                                |
 | **Summarizers & grouping** | Label, prefix, suffix, grouping labels                                                                                                                                                                             |
 | **Importers & exporters**  | Column and action labels                                                                                                                                                                                           |
+
+> **Monitored column types.** Automatic column-label resolution is wired for `TextColumn`,
+> `IconColumn`, `ColorColumn`, `ToggleColumn`, and `SelectColumn`. Custom or other column types are
+> not translated automatically — set their key explicitly with the [`conventionKey()` macro](#component-macros).
 
 Static metadata on pages, resources, clusters, widgets, relation managers, and resource pages is resolved through the `Resolves*` traits (see below).
 
@@ -117,6 +121,40 @@ Examples:
 | Relation manager table           | `filament/resources/user-resource.relation_managers.posts.table.heading` |
 
 Place strings under `lang/{locale}/` using nested arrays or dot keys.
+
+### Example lang file
+
+For a `UserResource` form with `name` and `email` fields, create
+`lang/en/filament/resources/user-resource.php`:
+
+```php
+<?php
+
+return [
+    'model_label' => 'user',
+    'plural_model_label' => 'users',
+    'navigation_label' => 'Users',
+    'navigation_group' => 'Access',
+
+    'form' => [
+        'name' => [
+            'label' => 'Full name',
+            'helper_text' => 'First and last name.',
+        ],
+        'email' => [
+            'label' => 'Email address',
+            'placeholder' => 'you@example.com',
+        ],
+    ],
+
+    'table' => [
+        'name' => ['label' => 'Name'],
+        'email' => ['label' => 'Email'],
+    ],
+];
+```
+
+Any key you omit falls back to Filament's native label, so you only translate what you need.
 
 ## Component macros
 
@@ -193,6 +231,14 @@ Use traits directly on your own classes when you prefer not to extend the base c
 | `ResolvesImporterLabels`        | Importer column labels                                                          |
 
 Implement `TranslatesConventionally` when a class exposes `resolveLabel()` for custom convention lookups.
+
+## Known limitations
+
+- **`hintIconTooltip` is not translated.** Calling Filament's `->hintIcon()` overwrites any
+  `->hintIconTooltip()` value, so this attribute is intentionally excluded from convention
+  resolution. Set it manually if you need a translated hint-icon tooltip.
+- **Custom table column types** are not auto-monitored (see [What gets translated](#what-gets-translated));
+  use the `conventionKey()` macro for them.
 
 ## Architecture
 

@@ -9,45 +9,17 @@ use Syriable\Filament\Plugins\Translator\Enums\PageLabelContext;
 
 trait ResolvesImporterLabels
 {
-    public static function resolveLabel(string $key, array $replace = [], Countable|float|int|null $number = null, bool $allowNull = false, ?PageLabelContext $pageLabelContext = null, ?string $pageLabelContextKey = null): mixed
+    use ResolvesConventionNamespace;
+
+    public static function resolveLabel(string $key, array $replace = [], Countable | float | int | null $number = null, bool $allowNull = false, ?PageLabelContext $pageLabelContext = null, ?string $pageLabelContextKey = null): mixed
     {
-        $namespace = str(static::class);
-
-        $pathAliases = TranslatorPlugin::get()->getPathAliases();
-
-        if ($namespace->contains(array_keys($pathAliases))) {
-            $namespace = $namespace->replace(
-                array_keys($pathAliases),
-                array_values($pathAliases),
-            );
-        } else {
-            $namespace = $namespace
-                ->after('Filament')
-                ->prepend('Filament')
-                ->trim('\\');
-        }
-
-        $namespace = $namespace
-            ->kebab()
-            ->replace('\\-', '\\')
-            ->replace('\\', '/')
-            ->rtrim('/');
-
-        $conventionKey = str($namespace)
+        $conventionKey = str(static::resolveConventionNamespace())
             ->when(filled($pageLabelContextKey))->append(".{$pageLabelContextKey}")
             ->when(blank($pageLabelContextKey) && $pageLabelContext, fn (Stringable $str) => $str->append(".{$pageLabelContext->value}"))
             ->append(".{$key}")
             ->toString();
 
-        if (! app('translator')->has($conventionKey) && ($allowNull || app()->isProduction())) {
-            return null;
-        }
-
-        if ($number !== null) {
-            return trans_choice($conventionKey, $number, $replace);
-        }
-
-        return __($conventionKey, $replace);
+        return static::lookupConventionKey($conventionKey, $replace, $number, $allowNull);
     }
 
     public static function getCompletedNotificationTitle(Import $import): string
@@ -57,22 +29,29 @@ trait ResolvesImporterLabels
 
     public static function getCompletedNotificationBody(Import $import): string
     {
+        // `getCompletedNotificationBody()` is abstract on Filament's Importer, so there is no
+        // parent implementation to delegate to. Build a sensible default when no convention
+        // translation exists, guaranteeing this method always returns a string.
         $body = static::resolveLabel(
             key: 'notifications.completed.body.default',
             replace: [
                 'successfulRows' => number_format($import->successful_rows),
             ],
             number: $import->successful_rows,
-        );
+            allowNull: true,
+        ) ?? number_format($import->successful_rows) . ' ' . str('row')->plural($import->successful_rows) . ' imported.';
 
         if ($failedRowsCount = $import->getFailedRowsCount()) {
-            $body .= ' '.static::resolveLabel(
+            $failedBody = static::resolveLabel(
                 key: 'notifications.completed.body.failed',
                 replace: [
                     'failedRows' => number_format($failedRowsCount),
                 ],
                 number: $failedRowsCount,
-            );
+                allowNull: true,
+            ) ?? number_format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to import.';
+
+            $body .= ' ' . $failedBody;
         }
 
         return $body;
