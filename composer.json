@@ -1,0 +1,65 @@
+{
+    "name": "syriable/filament-translator",
+    "description": "Convention-based automatic translations for Filament forms, tables, actions, and pages.",
+    "keywords": [
+        "syriable",
+        "laravel",
+        "filament",
+        "filament-plugin",
+        "translations",
+        "localization",
+        "filament-translator"
+    ],
+    "homepage": "https://github.com/syriable/filament-translator",
+    "support": {
+        "issues": "https://github.com/syriable/filament-translator/issues",
+        "source": "https://github.com/syriable/filament-translator"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Syriable",
+            "email": "alkhatib.syr@gmail.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "illuminate/contracts": "^11.0|^12.0|^13.0",
+        "spatie/laravel-package-tools": "^1.16"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.0",
+        "nunomaduro/collision": "^8.0",
+        "spatie/laravel-ray": "^1.26"
+    },
+    "autoload": {
+        "psr-4": {
+            "Syriable\\Filament\\Plugins\\Translator\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Syriable\\Filament\\Plugins\\Translator\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest --order-by random --stop-on-failure --stop-on-error --fail-on-risky",
+        "format": "vendor/bin/pint"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Syriable\\Filament\\Plugins\\Translator\\TranslatorServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
