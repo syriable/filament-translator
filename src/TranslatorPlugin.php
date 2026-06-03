@@ -30,7 +30,16 @@ class TranslatorPlugin implements Plugin
     {
         $panel ??= Filament::getCurrentOrDefaultPanel();
 
-        return $panel->getPlugin(app(static::class)->getId());
+        $id = app(static::class)->getId();
+
+        // Tolerate the plugin not being registered on the panel (e.g. standalone Livewire pages
+        // that only boot the registry). Returning a default instance keeps label resolution
+        // working with empty path aliases instead of throwing.
+        if (! $panel->hasPlugin($id)) {
+            return app(static::class);
+        }
+
+        return $panel->getPlugin($id);
     }
 
     public static function isActive(?Panel $panel = null): bool
