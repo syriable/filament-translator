@@ -1,4 +1,4 @@
-![Syriable Filament Translator](art/header-img.png)
+![Syriable Filament Translator](art/header-img.svg)
 
 # Syriable Filament Translator
 
@@ -89,15 +89,15 @@ Register `TranslatorPlugin` on a panel with `pathAliases()` when you need namesp
 
 `ConventionRegistry` wires lazy resolvers through Filament’s `configureUsing` hooks. Missing translations fall back to Filament’s native labels.
 
-| Area | Translated attributes |
-|------|------------------------|
-| **Actions** | Label, tooltip, badge, modal heading/description, submit/cancel labels, success/failure notification titles |
-| **Forms & infolists** | Field labels, placeholders, helper text, hints, prefixes/suffixes, validation attributes, section headings/descriptions, wizard steps, repeater action labels, select create/edit modal headings, loading messages |
-| **Tables** | Search placeholder, model labels, heading/description, default sort label, empty state heading/description, actions column label |
-| **Columns** | Label, description, tooltip, prefix/suffix, placeholder, default value, validation attribute |
-| **Filters** | Label, indicator, placeholder, true/false labels, constraint labels |
-| **Summarizers & grouping** | Label, prefix, suffix, grouping labels |
-| **Importers & exporters** | Column and action labels |
+| Area                       | Translated attributes                                                                                                                                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Actions**                | Label, tooltip, badge, modal heading/description, submit/cancel labels, success/failure notification titles                                                                                                        |
+| **Forms & infolists**      | Field labels, placeholders, helper text, hints, prefixes/suffixes, validation attributes, section headings/descriptions, wizard steps, repeater action labels, select create/edit modal headings, loading messages |
+| **Tables**                 | Search placeholder, model labels, heading/description, default sort label, empty state heading/description, actions column label                                                                                   |
+| **Columns**                | Label, description, tooltip, prefix/suffix, placeholder, default value, validation attribute                                                                                                                       |
+| **Filters**                | Label, indicator, placeholder, true/false labels, constraint labels                                                                                                                                                |
+| **Summarizers & grouping** | Label, prefix, suffix, grouping labels                                                                                                                                                                             |
+| **Importers & exporters**  | Column and action labels                                                                                                                                                                                           |
 
 Static metadata on pages, resources, clusters, widgets, relation managers, and resource pages is resolved through the `Resolves*` traits (see below).
 
@@ -109,12 +109,12 @@ Static metadata on pages, resources, clusters, widgets, relation managers, and r
 
 Examples:
 
-| UI source | Lang key |
-|-----------|----------|
-| `UserResource` form field `name` | `filament/resources/user-resource.form.name.label` |
-| Login page action `login` | `livewire/auth/login.actions.login.label` |
-| Page title | `livewire/auth/login.title` |
-| Relation manager table | `filament/resources/user-resource.relation_managers.posts.table.heading` |
+| UI source                        | Lang key                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------ |
+| `UserResource` form field `name` | `filament/resources/user-resource.form.name.label`                       |
+| Login page action `login`        | `livewire/auth/login.actions.login.label`                                |
+| Page title                       | `livewire/auth/login.title`                                              |
+| Relation manager table           | `filament/resources/user-resource.relation_managers.posts.table.heading` |
 
 Place strings under `lang/{locale}/` using nested arrays or dot keys.
 
@@ -133,35 +133,35 @@ Toggle::make('active')
     ->conventionKey('globals.active', isAbsolute: true);
 ```
 
-| Macro | Purpose |
-|-------|---------|
-| `conventionKey()` | Set or derive the translation segment |
-| `getConventionKey()` | Read the evaluated key |
-| `conventionKeyAbsolute()` | Mark the key as absolute (skip owner-path prefixing) |
-| `isConventionKeyAbsolute()` | Check whether the key is absolute |
+| Macro                       | Purpose                                              |
+| --------------------------- | ---------------------------------------------------- |
+| `conventionKey()`           | Set or derive the translation segment                |
+| `getConventionKey()`        | Read the evaluated key                               |
+| `conventionKeyAbsolute()`   | Mark the key as absolute (skip owner-path prefixing) |
+| `isConventionKeyAbsolute()` | Check whether the key is absolute                    |
 
 ## Base classes
 
 Extend Syriable’s translatable bases instead of Filament’s when you want convention-based metadata out of the box:
 
-| Base class | Replaces |
-|------------|----------|
-| `TranslatablePage` | `Filament\Pages\Page` |
-| `TranslatableResource` | `Filament\Resources\Resource` |
-| `TranslatableCluster` | `Filament\Clusters\Cluster` |
-| `TranslatableCreateRecord` | `CreateRecord` |
-| `TranslatableEditRecord` | `EditRecord` |
-| `TranslatableViewRecord` | `ViewRecord` |
-| `TranslatableListRecords` | `ListRecords` |
-| `TranslatableManageRecords` | `ManageRecords` |
-| `TranslatableManageRelatedRecords` | `ManageRelatedRecords` |
-| `TranslatableRelationManager` | `RelationManager` |
-| `TranslatableWidget` | `Filament\Widgets\Widget` |
-| `TranslatableChartWidget` | `ChartWidget` |
-| `TranslatableTableWidget` | `TableWidget` |
-| `TranslatableStatsOverviewWidget` | `StatsOverviewWidget` |
-| `TranslatableExporter` | `Exporter` |
-| `TranslatableImporter` | `Importer` |
+| Base class                         | Replaces                      |
+| ---------------------------------- | ----------------------------- |
+| `TranslatablePage`                 | `Filament\Pages\Page`         |
+| `TranslatableResource`             | `Filament\Resources\Resource` |
+| `TranslatableCluster`              | `Filament\Clusters\Cluster`   |
+| `TranslatableCreateRecord`         | `CreateRecord`                |
+| `TranslatableEditRecord`           | `EditRecord`                  |
+| `TranslatableViewRecord`           | `ViewRecord`                  |
+| `TranslatableListRecords`          | `ListRecords`                 |
+| `TranslatableManageRecords`        | `ManageRecords`               |
+| `TranslatableManageRelatedRecords` | `ManageRelatedRecords`        |
+| `TranslatableRelationManager`      | `RelationManager`             |
+| `TranslatableWidget`               | `Filament\Widgets\Widget`     |
+| `TranslatableChartWidget`          | `ChartWidget`                 |
+| `TranslatableTableWidget`          | `TableWidget`                 |
+| `TranslatableStatsOverviewWidget`  | `StatsOverviewWidget`         |
+| `TranslatableExporter`             | `Exporter`                    |
+| `TranslatableImporter`             | `Importer`                    |
 
 Example:
 
@@ -178,30 +178,30 @@ class UserResource extends TranslatableResource { /* … */ }
 
 Use traits directly on your own classes when you prefer not to extend the base classes:
 
-| Trait | Resolves |
-|-------|----------|
-| `ResolvesPageLabels` | Title, subheading, navigation label, navigation group |
-| `ResolvesResourceLabels` | Model label, plural model label, navigation label, navigation group, breadcrumb |
-| `ResolvesResourcePageLabels` | Resource page title, subheading, navigation metadata |
-| `ResolvesRelationManagerLabels` | Relation manager title, model label, table/form/action labels |
-| `ResolvesClusterLabels` | Cluster navigation label and group |
-| `ResolvesWidgetLabels` | Shared widget label resolution |
-| `ResolvesChartWidgetLabels` | Chart widget heading and description |
-| `ResolvesTableWidgetLabels` | Table widget heading |
-| `ResolvesStatsOverviewLabels` | Stats overview heading and description |
-| `ResolvesExporterLabels` | Exporter column labels |
-| `ResolvesImporterLabels` | Importer column labels |
+| Trait                           | Resolves                                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------- |
+| `ResolvesPageLabels`            | Title, subheading, navigation label, navigation group                           |
+| `ResolvesResourceLabels`        | Model label, plural model label, navigation label, navigation group, breadcrumb |
+| `ResolvesResourcePageLabels`    | Resource page title, subheading, navigation metadata                            |
+| `ResolvesRelationManagerLabels` | Relation manager title, model label, table/form/action labels                   |
+| `ResolvesClusterLabels`         | Cluster navigation label and group                                              |
+| `ResolvesWidgetLabels`          | Shared widget label resolution                                                  |
+| `ResolvesChartWidgetLabels`     | Chart widget heading and description                                            |
+| `ResolvesTableWidgetLabels`     | Table widget heading                                                            |
+| `ResolvesStatsOverviewLabels`   | Stats overview heading and description                                          |
+| `ResolvesExporterLabels`        | Exporter column labels                                                          |
+| `ResolvesImporterLabels`        | Importer column labels                                                          |
 
 Implement `TranslatesConventionally` when a class exposes `resolveLabel()` for custom convention lookups.
 
 ## Architecture
 
-| Concept | Class / trait | Role |
-|--------|----------------|------|
-| Panel plugin | `TranslatorPlugin` | Registers the package on a Filament panel and holds path aliases |
-| Label registry | `ConventionRegistry` | Wires Filament `configureUsing` hooks for actions, schemas, tables |
-| Path aliases | `ConfiguresPathAliases` | Maps namespace fragments to lang file paths |
-| Custom keys | `conventionKey()` macro | Override the derived key on any schema component |
+| Concept        | Class / trait           | Role                                                               |
+| -------------- | ----------------------- | ------------------------------------------------------------------ |
+| Panel plugin   | `TranslatorPlugin`      | Registers the package on a Filament panel and holds path aliases   |
+| Label registry | `ConventionRegistry`    | Wires Filament `configureUsing` hooks for actions, schemas, tables |
+| Path aliases   | `ConfiguresPathAliases` | Maps namespace fragments to lang file paths                        |
+| Custom keys    | `conventionKey()` macro | Override the derived key on any schema component                   |
 
 ## Testing
 
