@@ -29,6 +29,9 @@ trait ResolvesExporterLabels
 
     public static function getCompletedNotificationBody(Export $export): string
     {
+        // `getCompletedNotificationBody()` is abstract on Filament's Exporter, so there is no
+        // parent implementation to delegate to. Build a sensible default when no convention
+        // translation exists, guaranteeing this method always returns a string.
         $body = static::resolveLabel(
             key: 'notifications.completed.body.default',
             replace: [
@@ -36,13 +39,7 @@ trait ResolvesExporterLabels
             ],
             number: $export->successful_rows,
             allowNull: true,
-        );
-
-        // Fall back to Filament's native body when no convention translation exists, so this
-        // method always honours its `string` return type (instead of returning null in production).
-        if (blank($body)) {
-            return parent::getCompletedNotificationBody($export);
-        }
+        ) ?? number_format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' exported.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
             $failedBody = static::resolveLabel(
@@ -52,11 +49,9 @@ trait ResolvesExporterLabels
                 ],
                 number: $failedRowsCount,
                 allowNull: true,
-            );
+            ) ?? number_format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to export.';
 
-            if (filled($failedBody)) {
-                $body .= ' ' . $failedBody;
-            }
+            $body .= ' ' . $failedBody;
         }
 
         return $body;

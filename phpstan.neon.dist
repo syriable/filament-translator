@@ -6,3 +6,11 @@ parameters:
     paths:
         - src
     reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        # Dynamic properties set by the conventionKey() macros registered in TranslatorServiceProvider.
+        - '#Access to an undefined property .*::\$conventionKey\.#'
+        - '#Access to an undefined property .*::\$isConventionKeyAbsolute\.#'
+        # Defensive instanceof checks against table-action classes that only exist on some supported
+        # Filament versions; instanceof against a missing class simply evaluates to false at runtime.
+        - '#Class Filament\\Tables\\Actions\\ExportAction not found\.#'
+        - '#Class Filament\\Tables\\Actions\\ImportAction not found\.#'
