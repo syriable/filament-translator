@@ -16,7 +16,8 @@ class TranslatorServiceProvider extends PackageServiceProvider
     public function configurePackage(Package $package): void
     {
         $package
-            ->name('filament-translator');
+            ->name('filament-translator')
+            ->hasConfigFile();
     }
 
     public function boot(): void

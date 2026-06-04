@@ -129,6 +129,30 @@ app(ConventionRegistry::class)->registerDefaults();
 
 Register `TranslatorPlugin` on a panel with `pathAliases()` when you need namespace remapping; aliases are read from the active plugin during label resolution. When the plugin is not registered on the active panel, resolution falls back to empty path aliases instead of throwing, so guest routes keep working.
 
+## Configuration
+
+By default only the primary attributes (`label`, section `heading`, placeholder `content`, model labels, …) are **required** — a missing translation surfaces the convention key — while attributes such as `placeholder`, `tooltip`, `helperText`, and `hint` are optional and fall back to `null`.
+
+Publish the config file to change which attributes are required:
+
+```bash
+php artisan vendor:publish --tag="filament-translator-config"
+```
+
+`config/filament-translator.php` exposes a `required` map keyed by attribute (method) name. `true` makes the attribute required, `false` makes it optional; anything not listed keeps the default. Overrides apply across every context where the attribute appears (forms, tables, columns, filters, actions, summarizers):
+
+```php
+return [
+    'required' => [
+        'placeholder' => true, // require placeholders everywhere
+        'tooltip' => true,     // require tooltips
+        'label' => false,      // make labels optional
+    ],
+];
+```
+
+Required attributes also participate in [automatic key creation](#automatic-key-creation-local-development) when that feature is enabled.
+
 ## What gets translated
 
 `ConventionRegistry` wires lazy resolvers through Filament’s `configureUsing` hooks. Missing translations fall back to Filament’s native labels.
