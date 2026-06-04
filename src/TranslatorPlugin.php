@@ -6,16 +6,19 @@ use Filament\Contracts\Plugin;
 use Filament\Facades\Filament;
 use Filament\Panel;
 use Syriable\Filament\Plugins\Translator\Plugin\ConfiguresPathAliases;
+use Syriable\Filament\Plugins\Translator\Plugin\CreatesMissingTranslationKeys;
 
 /**
  * Filament panel plugin entry point for Syriable Filament Translator.
  *
  * Register via {@see make()} on your panel, optionally chain {@see pathAliases()} to remap
- * class namespace fragments (for example `App\Livewire` → `livewire`).
+ * class namespace fragments (for example `App\Livewire` → `livewire`), or
+ * {@see createMissingTranslationKeys()} to scaffold missing lang keys during local development.
  */
 class TranslatorPlugin implements Plugin
 {
     use ConfiguresPathAliases;
+    use CreatesMissingTranslationKeys;
 
     public static function make(): static
     {

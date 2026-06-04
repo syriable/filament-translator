@@ -721,8 +721,14 @@ class ConventionRegistry
             $conventionKey = $key;
         }
 
-        if (! static::translatorHas($conventionKey) && ($allowNull || app()->isProduction())) {
+        $exists = static::translatorHas($conventionKey);
+
+        if (! $exists && ($allowNull || app()->isProduction())) {
             return null;
+        }
+
+        if (! $exists && ($value = MissingTranslationKeyWriter::handle($conventionKey)) !== null) {
+            return $value;
         }
 
         if ($number !== null) {

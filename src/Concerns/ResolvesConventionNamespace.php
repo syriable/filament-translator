@@ -4,6 +4,7 @@ namespace Syriable\Filament\Plugins\Translator\Concerns;
 
 use Countable;
 use Filament\Facades\Filament;
+use Syriable\Filament\Plugins\Translator\MissingTranslationKeyWriter;
 use Syriable\Filament\Plugins\Translator\TranslatorPlugin;
 
 /**
@@ -57,8 +58,16 @@ trait ResolvesConventionNamespace
      */
     protected static function lookupConventionKey(string $conventionKey, array $replace = [], Countable | float | int | null $number = null, bool $allowNull = false): mixed
     {
-        if (! static::conventionKeyExists($conventionKey) && ($allowNull || app()->isProduction())) {
+        $exists = static::conventionKeyExists($conventionKey);
+
+        if (! $exists && ($allowNull || app()->isProduction())) {
             return null;
+        }
+
+        // Missing but required (and not production): optionally scaffold the key into the lang file
+        // and display the seeded value this request.
+        if (! $exists && ($value = MissingTranslationKeyWriter::handle($conventionKey)) !== null) {
+            return $value;
         }
 
         if ($number !== null) {

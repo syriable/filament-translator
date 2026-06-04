@@ -1,9 +1,25 @@
 <?php
 
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Schema;
 use Syriable\Filament\Plugins\Translator\ConventionRegistry;
 use Syriable\Filament\Plugins\Translator\Tests\TestCase;
 
 uses(TestCase::class)->in('Feature');
+
+/**
+ * Locate a field by name within a (possibly nested) schema. Shared by the resolver harness tests.
+ */
+function schemaField(Schema $schema, string $name): TextInput
+{
+    foreach ($schema->getFlatComponents() as $component) {
+        if ($component instanceof TextInput && $component->getName() === $name) {
+            return $component;
+        }
+    }
+
+    throw new RuntimeException("Field [{$name}] not found.");
+}
 
 /**
  * Clear the static translation/existence caches that intentionally survive a request, so each

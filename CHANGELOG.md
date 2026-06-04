@@ -2,6 +2,10 @@
 
 All notable changes to `syriable/filament-translator` will be documented in this file.
 
+## Unreleased
+
+- Feat: optionally scaffold missing **required** convention keys into the application's lang files during local development. Enable with `TranslatorPlugin::make()->createMissingTranslationKeys()`; the package creates the lang file, the nested array path, and a humanised default value (overridable via a closure), preserving existing translations. Always skipped in production.
+
 ## 1.0.1 - 2026-06-04
 
 First functional release: `1.0.0` shipped the rebrand but was unusable in production because its runtime dependencies were never declared. This release fixes that and hardens label resolution.
