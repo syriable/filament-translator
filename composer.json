@@ -45,7 +45,8 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Syriable\\Filament\\Plugins\\Translator\\Tests\\": "tests/"
+            "Syriable\\Filament\\Plugins\\Translator\\Tests\\": "tests/",
+            "TranslatorFixtures\\": "tests/Fixtures/"
         }
     },
     "scripts": {
