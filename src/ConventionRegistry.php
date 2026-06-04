@@ -177,6 +177,47 @@ class ConventionRegistry
      */
     protected static array $translatorHasCache = [];
 
+    public function __construct()
+    {
+        /** @var array<string, mixed> $overrides */
+        $overrides = (array) config('filament-translator.required', []);
+
+        if ($overrides === []) {
+            return;
+        }
+
+        foreach ([
+            'actionLabelAttributes',
+            'schemaLabelAttributes',
+            'tableLabelAttributes',
+            'columnLabelAttributes',
+            'filterLabelAttributes',
+            'tableFilterConstraintMethods',
+            'summarizerLabelAttributes',
+        ] as $property) {
+            $this->{$property} = $this->applyRequiredOverrides($this->{$property}, $overrides);
+        }
+    }
+
+    /**
+     * Apply the configured "required" overrides to an attribute map. Config is expressed as
+     * required (true = must be translated) while the maps store the inverse `allowNull` flag.
+     *
+     * @param  array<string, bool>  $attributes
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, bool>
+     */
+    protected function applyRequiredOverrides(array $attributes, array $overrides): array
+    {
+        foreach ($attributes as $method => $allowNull) {
+            if (array_key_exists($method, $overrides)) {
+                $attributes[$method] = ! (bool) $overrides[$method];
+            }
+        }
+
+        return $attributes;
+    }
+
     public function registerDefaults(): void
     {
         // Actions:

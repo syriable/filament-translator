@@ -5,6 +5,7 @@ All notable changes to `syriable/filament-translator` will be documented in this
 ## Unreleased
 
 - Feat: optionally scaffold missing **required** convention keys into the application's lang files during local development. Enable with `TranslatorPlugin::make()->createMissingTranslationKeys()`; the package creates the lang file, the nested array path, and a humanised default value (overridable via a closure), preserving existing translations. Always skipped in production.
+- Feat: add a publishable `config/filament-translator.php` with a `required` map to override which component attributes must be translated (for example make `placeholder` required, or `label` optional). Overrides apply across every context where the attribute appears.
 
 ## 1.0.1 - 2026-06-04
 
