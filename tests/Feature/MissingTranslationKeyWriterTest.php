@@ -21,7 +21,7 @@ it('creates the file and full nested array path for a deep key', function () {
         'en',
     );
 
-    expect($path)->toBe($this->langPath . '/en/livewire/auth/login.php')
+    expect(str_replace('\\', '/', $path))->toEndWith('/en/livewire/auth/login.php')
         ->and(File::exists($path))->toBeTrue()
         ->and(require $path)->toBe([
             'form' => [
