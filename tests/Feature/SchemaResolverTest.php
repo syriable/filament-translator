@@ -16,17 +16,6 @@ beforeEach(function () {
     resetTranslatorCaches([TranslatingPage::class]);
 });
 
-function schemaField(Schema $schema, string $name): TextInput
-{
-    foreach ($schema->getFlatComponents() as $component) {
-        if ($component instanceof TextInput && $component->getName() === $name) {
-            return $component;
-        }
-    }
-
-    throw new RuntimeException("Field [{$name}] not found.");
-}
-
 it('resolves a form field label from the convention namespace', function () {
     app('translator')->addLines([
         'filament/pages/translating-page.form.components.email.label' => 'Email address',

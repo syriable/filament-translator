@@ -66,6 +66,50 @@ TranslatorPlugin::make()
     ->pathAliases(['App\\Livewire' => 'livewire'], merge: false);
 ```
 
+### Automatic key creation (local development)
+
+Hand-writing every lang key while building an interface is tedious. Enable
+`createMissingTranslationKeys()` and the package scaffolds any **missing required label** into the
+correct lang file as you load pages — creating the file, the nested array path, and a humanised
+default value — so you’re left with a ready-to-translate stub instead of a raw key on screen.
+
+```php
+TranslatorPlugin::make()
+    ->createMissingTranslationKeys();
+```
+
+Requesting `livewire/auth/login.form.components.actions.forgot-password.label`, for example, writes
+`lang/{locale}/livewire/auth/login.php`:
+
+```php
+return [
+    'form' => [
+        'components' => [
+            'actions' => [
+                'forgot-password' => [
+                    'label' => 'Forgot Password',
+                ],
+            ],
+        ],
+    ],
+];
+```
+
+- **Local only.** Writes are always skipped in production regardless of the flag — lang files are
+  never written on live requests.
+- **Required labels only.** Optional attributes (placeholder, helper text, tooltip, …) are skipped
+  to keep lang files lean, and existing values are never overwritten.
+
+Customise the seeded value, or gate activation behind a condition, with the method arguments:
+
+```php
+// Seed every new key with an empty string instead of a humanised guess:
+TranslatorPlugin::make()->createMissingTranslationKeys(using: fn (string $key) => '');
+
+// Enable only in the local environment:
+TranslatorPlugin::make()->createMissingTranslationKeys(fn () => app()->isLocal());
+```
+
 ### Plugin helpers
 
 ```php
