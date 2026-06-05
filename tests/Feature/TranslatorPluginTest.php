@@ -2,6 +2,7 @@
 
 use Filament\Facades\Filament;
 use Syriable\Filament\Plugins\Translator\TranslatorPlugin;
+use TranslatorFixtures\App\Filament\Resources\UserResource;
 
 it('exposes a stable plugin id', function () {
     expect(TranslatorPlugin::make()->getId())->toBe('syriable/filament-translator');
@@ -38,4 +39,24 @@ it('returns the registered instance when present on the panel', function () {
 
     expect(TranslatorPlugin::isActive())->toBeTrue()
         ->and(TranslatorPlugin::get()->getPathAliases())->toBe(['App\\X' => 'x']);
+});
+
+/**
+ * Issue #54 — standalone Livewire path alias behaviour. With no active plugin the namespace falls
+ * back to the default `Filament`-prefixed derivation; when a plugin with matching aliases is active,
+ * the alias remaps the namespace.
+ */
+it('falls back to default namespace derivation when no plugin is active', function () {
+    expect(TranslatorPlugin::isActive())->toBeFalse()
+        ->and(UserResource::exposedConventionNamespace())->toBe('filament/resources/user-resource');
+});
+
+it('applies path aliases from the active plugin to namespace derivation', function () {
+    Filament::getCurrentOrDefaultPanel()->plugin(
+        TranslatorPlugin::make()->pathAliases([
+            'TranslatorFixtures\\App\\Filament\\Resources' => 'admin/resources',
+        ]),
+    );
+
+    expect(UserResource::exposedConventionNamespace())->toBe('admin/resources/user-resource');
 });
