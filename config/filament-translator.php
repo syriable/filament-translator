@@ -28,4 +28,26 @@ return [
         // 'label' => false,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Custom schema components
+    |--------------------------------------------------------------------------
+    |
+    | Register your own schema components (extending
+    | Filament\Schemas\Components\Component) so their attributes resolve through
+    | the same convention pipeline as first-party fields. Keys are the component
+    | class-string; values map an attribute (method) name to whether it allows
+    | null (false => required, true => optional), matching the built-in maps.
+    | The "required" overrides above apply to these too.
+    |
+    |   \App\Filament\Schemas\Components\Separator::class => [
+    |       'text' => false,
+    |   ],
+    |
+    */
+
+    'components' => [
+        //
+    ],
+
 ];

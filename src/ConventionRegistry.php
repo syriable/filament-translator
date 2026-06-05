@@ -56,7 +56,6 @@ class ConventionRegistry
         Schemas\Components\Wizard::class,
         Schemas\Components\Wizard\Step::class,
         Forms\Components\Field::class,
-        Forms\Components\Placeholder::class,
         Infolists\Components\Entry::class,
     ];
 
@@ -70,7 +69,7 @@ class ConventionRegistry
         'placeholder' => true,
         'helperText' => true,
         'hint' => true,
-        // 'hintIconTooltip' => true, // Note: doesn't work, calling the `->hintIcon()` method overwrites the `->hintIconTooltip()`.
+        'hintIconTooltip' => true, // Works with single-argument `->hintIcon($icon)`; passing a 2nd argument to `hintIcon()` overrides the wired tooltip.
         'prefix' => true,
         'suffix' => true,
         'validationAttribute' => true,
@@ -78,7 +77,7 @@ class ConventionRegistry
         'addBetweenActionLabel' => true, // Repeater
         'heading' => false, // Section
         'description' => true, // Section, Wizard\Step
-        'content' => false, // Placeholder
+        'content' => false, // Placeholder, Text
         'loadingMessage' => true, // Select
         'createOptionModalHeading' => true, // Select
         'editOptionModalHeading' => true, // Select
@@ -177,26 +176,34 @@ class ConventionRegistry
      */
     protected static array $translatorHasCache = [];
 
+    /**
+     * Custom schema components registered through `config('filament-translator.components')`,
+     * keyed by component class-string with an attribute => allowNull map.
+     *
+     * @var array<array-key, mixed>
+     */
+    protected array $customSchemaComponents = [];
+
     public function __construct()
     {
         /** @var array<string, mixed> $overrides */
         $overrides = (array) config('filament-translator.required', []);
 
-        if ($overrides === []) {
-            return;
+        if ($overrides !== []) {
+            foreach ([
+                'actionLabelAttributes',
+                'schemaLabelAttributes',
+                'tableLabelAttributes',
+                'columnLabelAttributes',
+                'filterLabelAttributes',
+                'tableFilterConstraintMethods',
+                'summarizerLabelAttributes',
+            ] as $property) {
+                $this->{$property} = $this->applyRequiredOverrides($this->{$property}, $overrides);
+            }
         }
 
-        foreach ([
-            'actionLabelAttributes',
-            'schemaLabelAttributes',
-            'tableLabelAttributes',
-            'columnLabelAttributes',
-            'filterLabelAttributes',
-            'tableFilterConstraintMethods',
-            'summarizerLabelAttributes',
-        ] as $property) {
-            $this->{$property} = $this->applyRequiredOverrides($this->{$property}, $overrides);
-        }
+        $this->customSchemaComponents = (array) config('filament-translator.components', []);
     }
 
     /**
@@ -227,6 +234,7 @@ class ConventionRegistry
 
         // Schemas:
         $this->wireSchemaLabels();
+        $this->wireCustomSchemaComponents();
 
         // Tables:
         $this->wireTableLabels();
@@ -423,6 +431,23 @@ class ConventionRegistry
             return $component->key(invade($component)->label);
         });
 
+        // `Text` is content-first (`Text::make($content)`); only resolve from lang when no explicit
+        // content was given, e.g. `Text::make(null)->key('or')`. Explicit strings/closures win.
+        // `Schemas\Components\Text` only exists on Filament v5, so guard for v4 compatibility.
+        if (class_exists(Schemas\Components\Text::class)) {
+            $contentAllowNull = $this->schemaLabelAttributes['content'] ?? false;
+
+            Schemas\Components\Text::configureUsing(static function (Schemas\Components\Text $component) use ($contentAllowNull) {
+                if (invade($component)->content !== null) {
+                    return $component;
+                }
+
+                return $component->content(static function (Schemas\Components\Text $component) use ($contentAllowNull) {
+                    return ConventionRegistry::resolveSchemaLabel($component, SchemaScope::Components, 'content', allowNull: $contentAllowNull);
+                });
+            });
+        }
+
         foreach ($this->monitoredSchemaTypes as $schemaComponent) {
             if (! class_exists($schemaComponent)) {
                 continue;
@@ -544,6 +569,45 @@ class ConventionRegistry
                 return $cast;
             });
         });
+    }
+
+    /**
+     * Wire convention-based resolution for application-registered custom schema components
+     * (see `config('filament-translator.components')`). Each entry maps a component class to an
+     * `attribute => allowNull` map (matching `schemaLabelAttributes` semantics); the global
+     * `required` overrides are applied on top.
+     */
+    protected function wireCustomSchemaComponents(): void
+    {
+        /** @var array<string, mixed> $required */
+        $required = (array) config('filament-translator.required', []);
+
+        foreach ($this->customSchemaComponents as $class => $attributes) {
+            if (! is_string($class) || ! class_exists($class) || ! is_array($attributes)) {
+                continue;
+            }
+
+            /** @var array<string, bool> $resolved */
+            $resolved = [];
+
+            foreach ($attributes as $method => $allowNull) {
+                $methodName = (string) $method;
+
+                $resolved[$methodName] = array_key_exists($methodName, $required)
+                    ? ! (bool) $required[$methodName]
+                    : (bool) $allowNull;
+            }
+
+            $class::configureUsing(static function (Schemas\Components\Component $component) use ($resolved): void {
+                foreach ($resolved as $method => $allowNull) {
+                    if (method_exists($component, $method)) {
+                        $component->{$method}(static function (Schemas\Components\Component $component) use ($method, $allowNull) {
+                            return ConventionRegistry::resolveSchemaLabel($component, SchemaScope::Components, Str::snake($method), allowNull: $allowNull);
+                        });
+                    }
+                }
+            }, isImportant: true);
+        }
     }
 
     protected function wireTableLabels(): void
@@ -1057,7 +1121,7 @@ class ConventionRegistry
             }
 
             if ($parentComponent instanceof Schemas\Components\Tabs) {
-                return ConventionRegistry::resolveSchemaLabel($parentComponent, $group, "tabs.{$key}", $replace, $number, allowNull: $allowNull);
+                return ConventionRegistry::resolveSchemaLabel($parentComponent, $group, "tab.{$key}", $replace, $number, allowNull: $allowNull);
             }
 
             if ($parentComponent instanceof Schemas\Components\Tabs\Tab) {
