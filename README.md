@@ -11,6 +11,19 @@ Convention-based automatic translations for [Filament](https://filamentphp.com) 
 
 **Syriable Filament Translator** derives translation keys from your PHP class names and Filament component names so UI code stays free of hard-coded copy. The package registers lazy label resolvers at boot; when a lang entry is missing, Filament’s default label is preserved.
 
+## Features
+
+- **Convention-based labels** — keys are derived from the owner class and component name; no hard-coded copy. ([what gets translated](#what-gets-translated))
+- **Broad coverage** — forms, infolists, tables, columns, filters, summarizers, grouping, actions, importers/exporters, plus page/resource/cluster/widget metadata.
+- **Path aliases** — map namespaces outside Filament’s defaults, e.g. `App\Livewire` → `livewire`. ([docs](#path-aliases))
+- **Component macros** — override or pin a component’s key, including absolute keys. ([docs](#component-macros))
+- **Automatic key creation** — scaffold missing required keys into your lang files as you browse, during local development. ([docs](#automatic-key-creation-local-development))
+- **Configurable required attributes** — choose which attributes must be translated via config. ([docs](#configuration))
+- **Custom schema components** — register your own components for convention resolution; Filament’s `Text` is supported out of the box. ([docs](#custom-schema-components))
+- **Hint-icon tooltips** — translate `hintIconTooltip` via the `hint_icon_tooltip` key. ([docs](#hint-icon-tooltips))
+- **Translatable base classes & traits** — drop-in bases/traits for pages, resources, clusters, widgets, importers, and more. ([docs](#base-classes))
+- **Graceful fallback** — any key you omit falls back to Filament’s native label.
+
 ## Requirements
 
 - PHP 8.3+
@@ -178,8 +191,33 @@ Separator::make('or'),
 ```
 
 The `required` overrides above apply to registered attributes too, and they participate in automatic
-key creation when enabled. Filament's first-party `Filament\Schemas\Components\Text` is supported out
-of the box — address it with `Text::make(null)->key('or')` (or `Text::make()` content stays literal).
+key creation when enabled.
+
+Filament’s first-party `Filament\Schemas\Components\Text` (static schema copy) is supported out of
+the box. Address it via `key()` so the content resolves from lang; explicit content stays literal:
+
+```php
+Text::make(null)->key('or'); // resolves {namespace}.form.components.or.content
+Text::make('Or');            // literal — no lang lookup
+```
+
+### Hint-icon tooltips
+
+Hint-icon tooltips are translated from the `hint_icon_tooltip` key. Set the icon in PHP with a
+**single argument** and put the copy in lang:
+
+```php
+TextInput::make('password')
+    ->hintIcon('heroicon-o-question-mark-circle'); // one argument — tooltip comes from lang
+```
+
+```php
+'form' => ['components' => ['password' => ['hint_icon_tooltip' => 'Minimum 8 characters.']]],
+```
+
+Passing a second argument — `->hintIcon($icon, $tooltip)` — sets the tooltip explicitly and skips
+the translation. This needs a Filament version that guards `hintIcon()` with `func_num_args()`;
+older releases clear the tooltip even with a single argument.
 
 ## What gets translated
 
@@ -188,7 +226,7 @@ of the box — address it with `Text::make(null)->key('or')` (or `Text::make()` 
 | Area                       | Translated attributes                                                                                                                                                                                              |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Actions**                | Label, tooltip, badge, modal heading/description, submit/cancel labels, success/failure notification titles                                                                                                        |
-| **Forms & infolists**      | Field labels, placeholders, helper text, hints, prefixes/suffixes, validation attributes, section headings/descriptions, wizard steps, repeater action labels, select create/edit modal headings, loading messages |
+| **Forms & infolists**      | Field labels, placeholders, helper text, hints, hint-icon tooltips, prefixes/suffixes, validation attributes, section headings/descriptions, tabs, wizard steps, `Text` content, repeater action labels, select create/edit modal headings, loading messages |
 | **Tables**                 | Search placeholder, model labels, heading/description, default sort label, empty state heading/description, actions column label                                                                                   |
 | **Columns**                | Label, description, tooltip, prefix/suffix, placeholder, default value, validation attribute                                                                                                                       |
 | **Filters**                | Label, indicator, placeholder, true/false labels, constraint labels                                                                                                                                                |
@@ -213,6 +251,7 @@ Examples:
 | -------------------------------- | ------------------------------------------------------------------------ |
 | `UserResource` form field `name` | `filament/resources/user-resource.form.name.label`                       |
 | Login page action `login`        | `livewire/auth/login.actions.login.label`                                |
+| Field inside a tab               | `livewire/auth/login.form.components.tabs.tab.{tab}.schema.{field}.label` |
 | Page title                       | `livewire/auth/login.title`                                              |
 | Relation manager table           | `filament/resources/user-resource.relation_managers.posts.table.heading` |
 
@@ -330,23 +369,22 @@ Implement `TranslatesConventionally` when a class exposes `resolveLabel()` for c
 
 ## Known limitations
 
-- **`hintIconTooltip` requires single-argument `->hintIcon($icon)`.** The tooltip is resolved from
-  the `hint_icon_tooltip` convention key, but passing a second argument to `->hintIcon($icon, $tooltip)`
-  overrides it (that's Filament's behavior). Set the icon in PHP with one argument and put the string
-  in lang. Note: older Filament releases clear the tooltip even with a single argument, so this needs
-  a Filament version that guards `hintIcon()` with `func_num_args()`.
+- **[Hint-icon tooltips](#hint-icon-tooltips) need single-argument `->hintIcon($icon)`** and a Filament
+  version that guards `hintIcon()` with `func_num_args()`; a second argument (or older Filament) bypasses
+  the translation.
 - **Custom table column types** are not auto-monitored (see [What gets translated](#what-gets-translated));
   use the `conventionKey()` macro for them. Custom *schema* components can be registered — see
   [Custom schema components](#custom-schema-components).
 
 ## Architecture
 
-| Concept        | Class / trait           | Role                                                               |
-| -------------- | ----------------------- | ------------------------------------------------------------------ |
-| Panel plugin   | `TranslatorPlugin`      | Registers the package on a Filament panel and holds path aliases   |
-| Label registry | `ConventionRegistry`    | Wires Filament `configureUsing` hooks for actions, schemas, tables |
-| Path aliases   | `ConfiguresPathAliases` | Maps namespace fragments to lang file paths                        |
-| Custom keys    | `conventionKey()` macro | Override the derived key on any schema component                   |
+| Concept        | Class / trait                 | Role                                                                       |
+| -------------- | ----------------------------- | -------------------------------------------------------------------------- |
+| Panel plugin   | `TranslatorPlugin`            | Registers the package on a panel; holds path aliases and key-creation opts |
+| Label registry | `ConventionRegistry`          | Wires Filament `configureUsing` hooks; applies `required`/`components` config |
+| Path aliases   | `ConfiguresPathAliases`       | Maps namespace fragments to lang file paths                                |
+| Key creation   | `MissingTranslationKeyWriter` | Scaffolds missing required keys into lang files (local dev)                |
+| Custom keys    | `conventionKey()` macro       | Override the derived key on any schema component                           |
 
 ## Testing
 

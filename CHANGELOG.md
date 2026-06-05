@@ -4,13 +4,18 @@ All notable changes to `syriable/filament-translator` will be documented in this
 
 ## Unreleased
 
-- Feat: optionally scaffold missing **required** convention keys into the application's lang files during local development. Enable with `TranslatorPlugin::make()->createMissingTranslationKeys()`; the package creates the lang file, the nested array path, and a humanised default value (overridable via a closure), preserving existing translations. Always skipped in production.
-- Feat: add a publishable `config/filament-translator.php` with a `required` map to override which component attributes must be translated (for example make `placeholder` required, or `label` optional). Overrides apply across every context where the attribute appears.
-- Feat: register custom schema components and their translatable attributes via `config('filament-translator.components')`, resolved through the same convention pipeline as first-party fields (#28).
-- Feat: support `Filament\Schemas\Components\Text`; address it with `Text::make(null)->key('…')` to resolve `content` from lang, while explicit content stays literal (#29).
-- Feat: resolve `hintIconTooltip` from the `hint_icon_tooltip` convention key. Use single-argument `->hintIcon($icon)`; passing a second argument overrides the wired tooltip (#30).
-- Fix: tab convention keys no longer contain a duplicate `tabs` segment — tab items now resolve under `tabs.tab.{tab}.…` (#31).
-- Fix: drop the deprecated `Filament\Forms\Components\Placeholder` registration; `Placeholder` is still covered through the monitored `Infolists\Components\Entry` it extends (#25).
+### Added
+
+- **Automatic key creation (local development).** `TranslatorPlugin::make()->createMissingTranslationKeys()` scaffolds missing **required** convention keys into your lang files as you browse — creating the file, the nested array path, and a humanised default value (overridable via a closure) while preserving existing translations. Always skipped in production.
+- **Configurable required attributes.** A publishable `config/filament-translator.php` with a `required` map to override which component attributes must be translated (for example make `placeholder` required, or `label` optional). Overrides apply across every context where the attribute appears.
+- **Custom schema components.** Register your own schema components and their translatable attributes via `config('filament-translator.components')`, resolved through the same convention pipeline as first-party fields (#28).
+- **`Filament\Schemas\Components\Text` support.** Address it with `Text::make(null)->key('…')` to resolve `content` from lang, while explicit content stays literal (#29).
+- **Hint-icon tooltips.** Resolve `hintIconTooltip` from the `hint_icon_tooltip` convention key. Use single-argument `->hintIcon($icon)`; a second argument overrides the wired tooltip (#30).
+
+### Fixed
+
+- Tab convention keys no longer contain a duplicate `tabs` segment — tab items now resolve under `tabs.tab.{tab}.…` (#31).
+- Drop the deprecated `Filament\Forms\Components\Placeholder` registration; `Placeholder` is still covered through the monitored `Infolists\Components\Entry` it extends (#25).
 
 ## 1.0.1 - 2026-06-04
 
