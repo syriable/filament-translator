@@ -23,6 +23,7 @@ use Syriable\Filament\Plugins\Translator\Enums\ActionScope;
 use Syriable\Filament\Plugins\Translator\Enums\PageLabelContext;
 use Syriable\Filament\Plugins\Translator\Enums\SchemaScope;
 use Syriable\Filament\Plugins\Translator\Enums\TableScope;
+use Syriable\Filament\Plugins\Translator\Support\FilamentInternals;
 
 /**
  * Central registry that wires Filament component defaults to convention-based lang lookups.
@@ -177,6 +178,14 @@ class ConventionRegistry
     protected static array $translatorHasCache = [];
 
     /**
+     * Memoized Eloquent model casts, keyed by model class-string, so enum-backed option resolution
+     * (Radio, Select, ToggleButtons, SelectFilter) does not re-instantiate the model on every call.
+     *
+     * @var array<class-string, array<string, string>>
+     */
+    protected static array $modelCastsCache = [];
+
+    /**
      * Custom schema components registered through `config('filament-translator.components')`,
      * keyed by component class-string with an attribute => allowNull map.
      *
@@ -225,8 +234,41 @@ class ConventionRegistry
         return $attributes;
     }
 
+    /**
+     * Identity of the {@see ComponentManager} the defaults were last registered against, paired
+     * with the configuration signature in {@see $registeredSignature}. Used to make
+     * {@see registerDefaults()} idempotent within a single application/worker lifecycle.
+     */
+    protected static ?object $registeredManager = null;
+
+    /**
+     * Signature of the configuration the defaults were last registered with. When neither the
+     * manager identity nor this signature change, re-registering is a no-op.
+     */
+    protected static ?string $registeredSignature = null;
+
+    /**
+     * Register all convention-based label resolvers on Filament's component manager.
+     *
+     * Safe to call multiple times: registration is skipped when the active component manager and
+     * the effective configuration are unchanged since the last call. This keeps the panel-plugin
+     * boot and any manual host boot (e.g. for standalone Livewire pages) from doing duplicate work,
+     * including across long-lived Octane/Swoole/RoadRunner workers. A configuration change (e.g.
+     * different `required`/`components` config) or a fresh manager (new request scope in tests)
+     * triggers re-registration so the latest configuration always wins.
+     */
     public function registerDefaults(): void
     {
+        $manager = \Filament\Support\Components\ComponentManager::resolve();
+        $signature = $this->registrationSignature();
+
+        if (static::$registeredManager === $manager && static::$registeredSignature === $signature) {
+            return;
+        }
+
+        static::$registeredManager = $manager;
+        static::$registeredSignature = $signature;
+
         // Actions:
         $this->wireActionLabels();
         $this->wireExporterLabels();
@@ -242,6 +284,38 @@ class ConventionRegistry
         $this->wireSummarizerLabels();
         $this->wireFilterLabels();
         $this->wireGroupingLabels();
+    }
+
+    /**
+     * Build a stable signature of the configuration that influences which resolvers are wired,
+     * so {@see registerDefaults()} can detect when re-registration is actually required.
+     */
+    protected function registrationSignature(): string
+    {
+        return md5(serialize([
+            $this->actionLabelAttributes,
+            $this->schemaLabelAttributes,
+            $this->tableLabelAttributes,
+            $this->columnLabelAttributes,
+            $this->filterLabelAttributes,
+            $this->tableFilterConstraintMethods,
+            $this->summarizerLabelAttributes,
+            $this->customSchemaComponents,
+            // Custom-component "required" overrides are applied at wiring time, so the raw config
+            // must participate in the signature even though it is not reflected in the maps above.
+            (array) config('filament-translator.required', []),
+        ]));
+    }
+
+    /**
+     * Reset the idempotency guard so the next {@see registerDefaults()} call re-registers. Intended
+     * for test isolation; production code never needs this because the guard already re-registers
+     * when configuration or the component manager changes.
+     */
+    public static function flushRegistrationState(): void
+    {
+        static::$registeredManager = null;
+        static::$registeredSignature = null;
     }
 
     protected function wireActionLabels(): void
@@ -261,7 +335,7 @@ class ConventionRegistry
                     if ($action::class !== Actions\Action::class) {
                         $prebuiltAction = ConventionRegistry::prebuiltComponent($action::class, $action->getName());
 
-                        $default = invade($prebuiltAction)->{Str::camel($method)};
+                        $default = FilamentInternals::property($prebuiltAction, Str::camel($method));
 
                         return $action->evaluate($default instanceof Closure ? Closure::bind($default, $action) : $default);
                     }
@@ -290,7 +364,7 @@ class ConventionRegistry
                     // Note: do not use `getMountedAction()`, as that will cause an infinite loop
                     // when a translation is requested *during* the caching of an action.
                     if ($livewire instanceof Actions\Contracts\HasActions) {
-                        foreach (invade($livewire)->cachedMountedActions ?? [] as $cachedMountedAction) {
+                        foreach (FilamentInternals::cachedMountedActions($livewire) as $cachedMountedAction) {
                             if ($cachedMountedAction instanceof Actions\ExportAction || $cachedMountedAction instanceof Tables\Actions\ExportAction) {
                                 $exporter = $cachedMountedAction->getExporter();
 
@@ -304,7 +378,7 @@ class ConventionRegistry
                     return null;
                 }
 
-                if (! (class_implements($exporter)[TranslatesConventionally::class] ?? null)) {
+                if (! $exporter instanceof TranslatesConventionally) {
                     return null;
                 }
 
@@ -330,7 +404,7 @@ class ConventionRegistry
                         // Note: do not use `getMountedAction()`, as that will cause an infinite loop
                         // when a translation is requested *during* the caching of an action.
                         if ($livewire instanceof Actions\Contracts\HasActions) {
-                            foreach (invade($livewire)->cachedMountedActions ?? [] as $cachedMountedAction) {
+                            foreach (FilamentInternals::cachedMountedActions($livewire) as $cachedMountedAction) {
                                 if ($cachedMountedAction instanceof Actions\ImportAction || $cachedMountedAction instanceof Tables\Actions\ImportAction) {
                                     $importer = $cachedMountedAction->getImporter();
 
@@ -344,7 +418,7 @@ class ConventionRegistry
                         return null;
                     }
 
-                    if (! (class_implements($importer)[TranslatesConventionally::class] ?? null)) {
+                    if (! $importer instanceof TranslatesConventionally) {
                         return null;
                     }
 
@@ -363,7 +437,7 @@ class ConventionRegistry
                         // Note: do not use `getMountedAction()`, as that will cause an infinite loop
                         // when a translation is requested *during* the caching of an action.
                         if ($livewire instanceof Actions\Contracts\HasActions) {
-                            foreach (invade($livewire)->cachedMountedActions ?? [] as $cachedMountedAction) {
+                            foreach (FilamentInternals::cachedMountedActions($livewire) as $cachedMountedAction) {
                                 if ($cachedMountedAction instanceof Actions\ImportAction || $cachedMountedAction instanceof Tables\Actions\ImportAction) {
                                     $importer = $cachedMountedAction->getImporter();
 
@@ -377,7 +451,7 @@ class ConventionRegistry
                         return null;
                     }
 
-                    if (! (class_implements($importer)[TranslatesConventionally::class] ?? null)) {
+                    if (! $importer instanceof TranslatesConventionally) {
                         return null;
                     }
 
@@ -394,7 +468,7 @@ class ConventionRegistry
         Schemas\Components\Fieldset::configureUsing(static function (Schemas\Components\Fieldset $component) {
             // Calling the `getLabel()` method whilst it is a closure will cause an error about the $livewire component not being set.
             // If we were to not check for the closure, we might break existing forms in the app that aren't using autotranslator.
-            if (invade($component)->label instanceof Closure) {
+            if (FilamentInternals::property($component, 'label') instanceof Closure) {
                 return $component;
             }
 
@@ -402,7 +476,7 @@ class ConventionRegistry
         });
 
         Schemas\Components\Section::configureUsing(static function (Schemas\Components\Section $component) {
-            if (invade($component)->heading instanceof Closure) {
+            if (FilamentInternals::property($component, 'heading') instanceof Closure) {
                 return $component;
             }
 
@@ -416,7 +490,7 @@ class ConventionRegistry
         });
 
         Schemas\Components\Tabs\Tab::configureUsing(static function (Schemas\Components\Tabs\Tab $component) {
-            if (invade($component)->label instanceof Closure) {
+            if (FilamentInternals::property($component, 'label') instanceof Closure) {
                 return $component;
             }
 
@@ -424,11 +498,11 @@ class ConventionRegistry
         });
 
         Schemas\Components\Wizard\Step::configureUsing(static function (Schemas\Components\Wizard\Step $component) {
-            if (invade($component)->label instanceof Closure) {
+            if (FilamentInternals::property($component, 'label') instanceof Closure) {
                 return $component;
             }
 
-            return $component->key(invade($component)->label);
+            return $component->key(FilamentInternals::property($component, 'label'));
         });
 
         // `Text` is content-first (`Text::make($content)`); only resolve from lang when no explicit
@@ -438,7 +512,7 @@ class ConventionRegistry
             $contentAllowNull = $this->schemaLabelAttributes['content'] ?? false;
 
             Schemas\Components\Text::configureUsing(static function (Schemas\Components\Text $component) use ($contentAllowNull) {
-                if (invade($component)->content !== null) {
+                if (FilamentInternals::property($component, 'content') !== null) {
                     return $component;
                 }
 
@@ -478,7 +552,7 @@ class ConventionRegistry
             $component
                 ->options(static function (Forms\Components\Radio $component, string $model) {
                     /** @var class-string<Model> $cast */
-                    $cast = (new $model())->getCasts()[$component->getName()] ?? null;
+                    $cast = ConventionRegistry::modelCasts($model)[$component->getName()] ?? null;
 
                     if (! $cast) {
                         return null;
@@ -500,7 +574,7 @@ class ConventionRegistry
                     }
 
                     /** @var class-string<Model> $cast */
-                    $cast = (new $model())->getCasts()[$component->getName()] ?? null;
+                    $cast = ConventionRegistry::modelCasts($model)[$component->getName()] ?? null;
 
                     if (! $cast) {
                         return [];
@@ -531,7 +605,7 @@ class ConventionRegistry
         Forms\Components\Select::configureUsing(static function (Forms\Components\Select $component) {
             $component->options(static function (Forms\Components\Select $component, string $model) {
                 /** @var class-string<Model> $cast */
-                $cast = (new $model())->getCasts()[$component->getName()] ?? null;
+                $cast = ConventionRegistry::modelCasts($model)[$component->getName()] ?? null;
 
                 if (! $cast) {
                     return null;
@@ -552,7 +626,7 @@ class ConventionRegistry
         Forms\Components\ToggleButtons::configureUsing(static function (Forms\Components\ToggleButtons $component) {
             $component->options(static function (Forms\Components\ToggleButtons $component, string $model) {
                 /** @var class-string<Model> $cast */
-                $cast = (new $model())->getCasts()[$component->getName()] ?? null;
+                $cast = ConventionRegistry::modelCasts($model)[$component->getName()] ?? null;
 
                 if (! $cast) {
                     return null;
@@ -626,7 +700,7 @@ class ConventionRegistry
     protected function wireColumnLabels(): void
     {
         Tables\Columns\ColumnGroup::configureUsing(static function (Tables\Columns\ColumnGroup $component) {
-            if (invade($component)->label instanceof Closure) {
+            if (FilamentInternals::property($component, 'label') instanceof Closure) {
                 return $component;
             }
 
@@ -690,7 +764,7 @@ class ConventionRegistry
                         if ($shouldRetrievePrebuiltTranslation) {
                             $prebuiltFilter = ConventionRegistry::prebuiltComponent($filter::class, $filter->getName());
 
-                            $default = invade($prebuiltFilter)->{Str::camel($method)};
+                            $default = FilamentInternals::property($prebuiltFilter, Str::camel($method));
 
                             return $filter->evaluate($default instanceof Closure ? Closure::bind($default, $filter) : $default);
                         }
@@ -710,7 +784,7 @@ class ConventionRegistry
                 $model = $table->getModel();
 
                 /** @var class-string<Model> $cast */
-                $cast = (new $model())->getCasts()[$filter->getName()] ?? null;
+                $cast = ConventionRegistry::modelCasts($model)[$filter->getName()] ?? null;
 
                 if (! $cast) {
                     return [];
@@ -753,6 +827,15 @@ class ConventionRegistry
         }, isImportant: true);
     }
 
+    /**
+     * Wire summarizer label attributes. Summarizers resolve under their owning column using the
+     * `summarizers.{name}.{attribute}` convention key (see {@see resolveTableLabel()}), so the
+     * effective scope is {@see TableScope::Columns}; the passed scope is informational because
+     * summarizer resolution rewrites it to the column scope regardless.
+     *
+     * Group label wiring lives solely in {@see wireGroupingLabels()} and is intentionally not
+     * duplicated here.
+     */
     protected function wireSummarizerLabels(): void
     {
         $summarizerLabelAttributes = $this->summarizerLabelAttributes;
@@ -760,15 +843,9 @@ class ConventionRegistry
         Tables\Columns\Summarizers\Summarizer::configureUsing(static function (Tables\Columns\Summarizers\Summarizer $summarizer) use ($summarizerLabelAttributes) {
             foreach ($summarizerLabelAttributes as $method => $allowNull) {
                 $summarizer->{$method}(static function (Tables\Columns\Summarizers\Summarizer $summarizer) use ($method, $allowNull) {
-                    return ConventionRegistry::resolveTableLabel($summarizer, TableScope::Filters, Str::snake($method), allowNull: $allowNull);
+                    return ConventionRegistry::resolveTableLabel($summarizer, TableScope::Columns, Str::snake($method), allowNull: $allowNull);
                 });
             }
-        }, isImportant: true);
-
-        Tables\Grouping\Group::configureUsing(static function (Tables\Grouping\Group $group) {
-            $group->label(static function (Tables\Grouping\Group $group) {
-                return ConventionRegistry::resolveTableLabel($group, TableScope::Groups, 'label');
-            });
         }, isImportant: true);
     }
 
@@ -782,7 +859,7 @@ class ConventionRegistry
 
         return static::$prebuiltComponentCache[$cacheKey] ??= tap(
             app($class, ['name' => $name]),
-            static fn (object $component) => invade($component)->setUp(),
+            static fn (object $component) => FilamentInternals::callSetUp($component),
         );
     }
 
@@ -791,6 +868,18 @@ class ConventionRegistry
         $cacheKey = app()->getLocale() . '|' . $key;
 
         return static::$translatorHasCache[$cacheKey] ??= app('translator')->has($key);
+    }
+
+    /**
+     * Resolve (and memoize) the casts for a model class so enum-backed option wiring avoids
+     * re-instantiating the model on every label resolution.
+     *
+     * @param  class-string<Model>  $model
+     * @return array<string, string>
+     */
+    protected static function modelCasts(string $model): array
+    {
+        return static::$modelCastsCache[$model] ??= (new $model())->getCasts();
     }
 
     protected static function sanitizeComponentPath(string $name, array $namespace = []): string
@@ -1049,7 +1138,7 @@ class ConventionRegistry
             return null;
         };
 
-        $cachedActions = invade($livewire)->cachedActions;
+        $cachedActions = FilamentInternals::cachedActions($livewire);
 
         foreach ($cachedActions as $action) {
             if ($action->getName() === $actionComponent->getName()) {
@@ -1089,8 +1178,7 @@ class ConventionRegistry
         }
 
         $normalizedName = match (true) {
-            $schemaComponent instanceof Forms\Components\Field => ConventionRegistry::sanitizeComponentPath($schemaComponent->getConventionKey() ?? ($schemaComponent->evaluate(invade($schemaComponent)->key) ? $schemaComponent->getKey(isAbsolute: false) : $schemaComponent->getName())),
-            $schemaComponent instanceof Forms\Components\Placeholder => ConventionRegistry::sanitizeComponentPath($schemaComponent->getConventionKey() ?? $schemaComponent->getKey(isAbsolute: false) ?? $schemaComponent->getName()),
+            $schemaComponent instanceof Forms\Components\Field => ConventionRegistry::sanitizeComponentPath($schemaComponent->getConventionKey() ?? ($schemaComponent->evaluate(FilamentInternals::property($schemaComponent, 'key')) ? $schemaComponent->getKey(isAbsolute: false) : $schemaComponent->getName())),
             $schemaComponent instanceof Schemas\Components\Tabs => ConventionRegistry::sanitizeComponentPath($schemaComponent->getConventionKey() ?? 'tabs'),
             $schemaComponent instanceof Schemas\Components\Tabs\Tab => ConventionRegistry::sanitizeComponentPath($schemaComponent->getConventionKey() ?? $schemaComponent->getKey(isAbsolute: false) ?? $schemaComponent->getId()),
             $schemaComponent instanceof Schemas\Components\Wizard => ConventionRegistry::sanitizeComponentPath($schemaComponent->getConventionKey() ?? 'wizard'), // Do not include key or ID because the key or ID is based on state path and label, giving infinite recursion...
@@ -1220,7 +1308,7 @@ class ConventionRegistry
             // Note: do not use `getMountedAction()`, as that will cause an infinite loop
             // when a translation is requested *during* the caching of an action..
 
-            foreach (invade($livewire)->cachedMountedActions ?? [] as $cachedMountedAction) {
+            foreach (FilamentInternals::cachedMountedActions($livewire) as $cachedMountedAction) {
                 if ($cachedMountedAction->getName() === $lastOperation) {
                     /** @var Actions\Action $mountedAction */
                     $mountedAction = $cachedMountedAction;
@@ -1235,8 +1323,8 @@ class ConventionRegistry
             $schemaComponent = $mountedAction->getSchemaComponent();
 
             if ($schemaComponent) {
-                $createOptionActionForm = invade($schemaComponent)->createOptionActionForm;
-                $editOptionActionForm = invade($schemaComponent)->editOptionActionForm;
+                $createOptionActionForm = FilamentInternals::property($schemaComponent, 'createOptionActionForm');
+                $editOptionActionForm = FilamentInternals::property($schemaComponent, 'editOptionActionForm');
 
                 $namespace = match (true) {
                     $createOptionActionForm === $editOptionActionForm => 'manage_option_form',
@@ -1260,8 +1348,9 @@ class ConventionRegistry
                 || ($livewire instanceof Resources\Pages\ManageRecords && $lastOperation === 'view')
                 || ($livewire instanceof Resources\Pages\ViewRecord && ($lastOperation === 'view' || (class_exists($lastOperation) && is_a($lastOperation, Resources\Pages\ViewRecord::class, true))))
             )
-            && class_implements($resource = $livewire::getResource(), TranslatesConventionally::class)
+            && is_a($resource = $livewire::getResource(), TranslatesConventionally::class, true)
         ) {
+            /** @var class-string<Resources\Resource&TranslatesConventionally> $resource */
             $schemaComponentName = $schemaComponent->getName();
 
             if ($schemaComponentName === 'infolist') {
@@ -1276,7 +1365,6 @@ class ConventionRegistry
                 return $resource::resolveLabel($key, $replace, $number, allowNull: $allowNull, pageLabelContext: PageLabelContext::Form, pageLabelContextKey: 'infolist');
             }
 
-            /** @var class-string<TranslatesConventionally> $resource */
             return $resource::resolveLabel($key, $replace, $number, allowNull: $allowNull, pageLabelContext: PageLabelContext::Form);
         }
 
@@ -1286,7 +1374,7 @@ class ConventionRegistry
                 || ($livewire instanceof Resources\Pages\ManageRelatedRecords && $lastOperation === 'edit')
                 || ($livewire instanceof Resources\Pages\ManageRelatedRecords && $lastOperation === 'view')
             )
-            && class_implements($livewire, TranslatesConventionally::class)
+            && $livewire instanceof TranslatesConventionally
         ) {
             if (
                 ! $mountedAction
@@ -1302,7 +1390,6 @@ class ConventionRegistry
                     return ConventionRegistry::lookupAbsoluteKey($conventionKey, "form.{$key}", $replace, $number, $allowNull);
                 }
 
-                /** @var class-string<TranslatesConventionally> $livewire */
                 return $livewire::resolveLabel($key, $replace, $number, allowNull: $allowNull, pageLabelContext: PageLabelContext::Form);
             }
         }
@@ -1313,17 +1400,18 @@ class ConventionRegistry
                 || ($livewire instanceof Resources\RelationManagers\RelationManager && $lastOperation === 'edit')
                 || ($livewire instanceof Resources\RelationManagers\RelationManager && $lastOperation === 'view')
             )
-            && class_implements($livewire, TranslatesConventionally::class)
+            && $livewire instanceof TranslatesConventionally
         ) {
-            // if (
-            //    $mountedAction
-            //    && ( $conventionKey = $mountedAction->getConventionKey() )
-            //    && $mountedAction->isConventionKeyAbsolute()
-            // ) {
-            //    return ConventionRegistry::lookupAbsoluteKey($conventionKey, "form.{$key}", $replace, $number, $allowNull);
-            // }
+            // An absolute convention key set on the mounted action wins over the relation-manager
+            // page namespace, mirroring the ManageRelatedRecords branch above.
+            if (
+                $mountedAction
+                && ($conventionKey = $mountedAction->getConventionKey())
+                && $mountedAction->isConventionKeyAbsolute()
+            ) {
+                return ConventionRegistry::lookupAbsoluteKey($conventionKey, "form.{$key}", $replace, $number, $allowNull);
+            }
 
-            /** @var class-string<TranslatesConventionally> $livewire */
             return $livewire::resolveLabel($key, $replace, $number, allowNull: $allowNull, pageLabelContext: PageLabelContext::Form);
         }
 
