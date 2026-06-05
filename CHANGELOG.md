@@ -2,6 +2,17 @@
 
 All notable changes to `syriable/filament-translator` will be documented in this file.
 
+## 1.1.0 - 2026-06-05
+
+### What's Changed
+
+* feat: automatic translation key path creation by @alkhatibsy in https://github.com/syriable/filament-translator/pull/26
+* feat: configurable required translation attributes by @alkhatibsy in https://github.com/syriable/filament-translator/pull/27
+* fix: resolve open schema-resolution issues (#25, #28–#31) by @alkhatibsy in https://github.com/syriable/filament-translator/pull/32
+* docs: comprehensive README + CHANGELOG covering all features by @alkhatibsy in https://github.com/syriable/filament-translator/pull/33
+
+**Full Changelog**: https://github.com/syriable/filament-translator/compare/1.0.1...1.1.0
+
 ## Unreleased
 
 ### Added
