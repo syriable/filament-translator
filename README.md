@@ -153,6 +153,34 @@ return [
 
 Required attributes also participate in [automatic key creation](#automatic-key-creation-local-development) when that feature is enabled.
 
+### Custom schema components
+
+Register your own schema components (extending `Filament\Schemas\Components\Component`) so their
+attributes resolve through the same convention pipeline as first-party fields. Map each component
+class to an `attribute => allowNull` list (`false` = required, `true` = optional), in the same
+shape as the built-in attribute maps:
+
+```php
+// config/filament-translator.php
+'components' => [
+    \App\Filament\Schemas\Components\Separator::class => [
+        'text' => false,
+    ],
+],
+```
+
+```php
+// Used unchanged in a form…
+Separator::make('or'),
+
+// …resolved from lang/{locale}/livewire/auth/login.php:
+'form' => ['components' => ['or' => ['text' => 'Or']]],
+```
+
+The `required` overrides above apply to registered attributes too, and they participate in automatic
+key creation when enabled. Filament's first-party `Filament\Schemas\Components\Text` is supported out
+of the box — address it with `Text::make(null)->key('or')` (or `Text::make()` content stays literal).
+
 ## What gets translated
 
 `ConventionRegistry` wires lazy resolvers through Filament’s `configureUsing` hooks. Missing translations fall back to Filament’s native labels.
@@ -302,11 +330,13 @@ Implement `TranslatesConventionally` when a class exposes `resolveLabel()` for c
 
 ## Known limitations
 
-- **`hintIconTooltip` is not translated.** Calling Filament's `->hintIcon()` overwrites any
-  `->hintIconTooltip()` value, so this attribute is intentionally excluded from convention
-  resolution. Set it manually if you need a translated hint-icon tooltip.
+- **`hintIconTooltip` requires single-argument `->hintIcon($icon)`.** The tooltip is resolved from
+  the `hint_icon_tooltip` convention key, but passing a second argument to `->hintIcon($icon, $tooltip)`
+  overrides it (that's Filament's behavior). Set the icon in PHP with one argument and put the string
+  in lang.
 - **Custom table column types** are not auto-monitored (see [What gets translated](#what-gets-translated));
-  use the `conventionKey()` macro for them.
+  use the `conventionKey()` macro for them. Custom *schema* components can be registered — see
+  [Custom schema components](#custom-schema-components).
 
 ## Architecture
 
