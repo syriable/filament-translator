@@ -2,6 +2,14 @@
 
 All notable changes to `syriable/filament-translator` will be documented in this file.
 
+## 1.1.1 - 2026-06-05
+
+### What's Changed
+
+* Fix/issues batch 34 73 by @alkhatibsy in https://github.com/syriable/filament-translator/pull/74
+
+**Full Changelog**: https://github.com/syriable/filament-translator/compare/1.1.0...1.1.1
+
 ## 1.1.0 - 2026-06-05
 
 ### What's Changed
