@@ -2,15 +2,38 @@ includes:
     - vendor/larastan/larastan/extension.neon
 
 parameters:
-    level: 1
+    level: 3
     paths:
         - src
     reportUnmatchedIgnoredErrors: false
     ignoreErrors:
-        # Dynamic properties set by the conventionKey() macros registered in TranslatorServiceProvider.
-        - '#Access to an undefined property .*::\$conventionKey\.#'
-        - '#Access to an undefined property .*::\$isConventionKeyAbsolute\.#'
+        # conventionKey()/getConventionKey()/conventionKeyAbsolute()/isConventionKeyAbsolute() are
+        # runtime macros registered on Filament components in TranslatorServiceProvider; PHPStan's
+        # Macroable handling does not see macros declared via static closures.
+        - '#Call to an undefined method .*::(conventionKey|getConventionKey|conventionKeyAbsolute|isConventionKeyAbsolute)\(\)#'
         # Defensive instanceof checks against table-action classes that only exist on some supported
         # Filament versions; instanceof against a missing class simply evaluates to false at runtime.
         - '#Class Filament\\Tables\\Actions\\ExportAction not found\.#'
         - '#Class Filament\\Tables\\Actions\\ImportAction not found\.#'
+        - '#method getExporter\(\) on an unknown class Filament\\Tables\\Actions\\ExportAction#'
+        - '#method getImporter\(\) on an unknown class Filament\\Tables\\Actions\\ImportAction#'
+        # getFilter() exists on QueryBuilder constraints at runtime but is not declared on the base
+        # Constraint class across all supported Filament versions.
+        - '#Call to an undefined method Filament\\Tables\\Filters\\QueryBuilder\\Constraints\\Constraint::getFilter\(\)#'
+        # PHPStan treats WeakMap's TValue as invariant, so lazily assigning `new WeakMap` to a typed
+        # nullable property reports a false positive. See https://phpstan.org/blog/whats-up-with-template-covariant
+        - identifier: assign.propertyType
+          path: src/Support/ConventionKeyStore.php
+        - identifier: return.type
+          path: src/Support/ConventionKeyStore.php
+        # spatie/invade intentionally reaches protected/private Filament internals that have no public
+        # API; the Invader proxy is dynamic by design, so its member access cannot be typed.
+        - '#property Spatie\\Invade\\Invader#'
+        - '#Call to an undefined method Spatie\\Invade\\(Invader|StaticInvader).*::setUp\(\)#'
+        # The conventionKey() macro closures are rebound to Filament components at runtime; the
+        # `@var $this` retype is the documented macro pattern but cannot be reconciled with the
+        # closure's declaring class statically.
+        - identifier: varTag.nativeType
+          path: src/TranslatorServiceProvider.php
+        - identifier: return.type
+          path: src/TranslatorServiceProvider.php

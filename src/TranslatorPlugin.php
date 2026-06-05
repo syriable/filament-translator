@@ -42,7 +42,10 @@ class TranslatorPlugin implements Plugin
             return app(static::class);
         }
 
-        return $panel->getPlugin($id);
+        /** @var static $plugin */
+        $plugin = $panel->getPlugin($id);
+
+        return $plugin;
     }
 
     public static function isActive(?Panel $panel = null): bool
