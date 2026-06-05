@@ -6,6 +6,7 @@ use Closure;
 use Filament;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
+use Syriable\Filament\Plugins\Translator\Support\ConventionKeyStore;
 
 /**
  * Boots Syriable Filament Translator: registers the package and exposes
@@ -29,29 +30,32 @@ class TranslatorServiceProvider extends PackageServiceProvider
 
     protected function bootMacros(): void
     {
+        // Convention-key metadata is stored in a WeakMap keyed by the component instance rather than
+        // as dynamic properties, which would trigger the PHP 8.4 dynamic-property deprecation on the
+        // third-party Filament component classes these macros are attached to.
         $conventionKeyMacro = function (string | Closure $key, bool | Closure $isAbsolute = false): Filament\Support\Components\ViewComponent | Filament\Support\Components\Component {
             /** @var Filament\Support\Components\ViewComponent|Filament\Support\Components\Component $this */
-            $this->conventionKey = $key;
-            $this->isConventionKeyAbsolute = $isAbsolute;
+            ConventionKeyStore::setKey($this, $key);
+            ConventionKeyStore::setAbsolute($this, $isAbsolute);
 
             return $this;
         };
 
         $getConventionKeyMacro = function (): ?string {
             /** @var Filament\Support\Components\ViewComponent|Filament\Support\Components\Component $this */
-            return $this->evaluate($this->conventionKey ?? null);
+            return $this->evaluate(ConventionKeyStore::getKey($this));
         };
 
         $conventionKeyAbsoluteMacro = function (bool | Closure $condition): static {
             /** @var Filament\Support\Components\ViewComponent|Filament\Support\Components\Component $this */
-            $this->isConventionKeyAbsolute = $condition;
+            ConventionKeyStore::setAbsolute($this, $condition);
 
             return $this;
         };
 
         $isConventionKeyAbsoluteMacro = function (): bool {
             /** @var Filament\Support\Components\ViewComponent|Filament\Support\Components\Component $this */
-            return $this->evaluate($this->isConventionKeyAbsolute ?? false);
+            return $this->evaluate(ConventionKeyStore::getAbsolute($this));
         };
 
         Filament\Support\Components\ViewComponent::macro('conventionKey', $conventionKeyMacro);

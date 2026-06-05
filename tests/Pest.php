@@ -41,6 +41,7 @@ function resetTranslatorCaches(array $conventionClasses = []): void
 
     $reset(ConventionRegistry::class, 'translatorHasCache');
     $reset(ConventionRegistry::class, 'prebuiltComponentCache');
+    $reset(ConventionRegistry::class, 'modelCastsCache');
 
     foreach ($conventionClasses as $class) {
         $reset($class, 'conventionKeyExistenceCache');

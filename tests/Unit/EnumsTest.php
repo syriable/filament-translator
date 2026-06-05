@@ -3,7 +3,6 @@
 use Syriable\Filament\Plugins\Translator\Enums\ActionScope;
 use Syriable\Filament\Plugins\Translator\Enums\InfolistScope;
 use Syriable\Filament\Plugins\Translator\Enums\PageLabelContext;
-use Syriable\Filament\Plugins\Translator\Enums\ResolutionMode;
 use Syriable\Filament\Plugins\Translator\Enums\SchemaScope;
 use Syriable\Filament\Plugins\Translator\Enums\TableScope;
 
@@ -25,13 +24,6 @@ it('exposes the expected PageLabelContext cases', function () {
         ->and(PageLabelContext::Infolist->value)->toBe('infolist')
         ->and(PageLabelContext::Table->value)->toBe('table')
         ->and(PageLabelContext::cases())->toHaveCount(5);
-});
-
-it('exposes the expected ResolutionMode cases', function () {
-    expect(ResolutionMode::Strict->value)->toBe('strict')
-        ->and(ResolutionMode::Balanced->value)->toBe('balanced')
-        ->and(ResolutionMode::Loose->value)->toBe('loose')
-        ->and(ResolutionMode::cases())->toHaveCount(3);
 });
 
 it('exposes the expected SchemaScope cases', function () {

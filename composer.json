@@ -50,6 +50,7 @@
         }
     },
     "scripts": {
+        "analyse": "vendor/bin/phpstan analyse --memory-limit=512M",
         "test": "vendor/bin/pest --order-by random --stop-on-failure --stop-on-error --fail-on-risky",
         "format": "vendor/bin/pint"
     },
@@ -66,6 +67,5 @@
             ]
         }
     },
-    "minimum-stability": "dev",
     "prefer-stable": true
 }
