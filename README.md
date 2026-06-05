@@ -333,7 +333,8 @@ Implement `TranslatesConventionally` when a class exposes `resolveLabel()` for c
 - **`hintIconTooltip` requires single-argument `->hintIcon($icon)`.** The tooltip is resolved from
   the `hint_icon_tooltip` convention key, but passing a second argument to `->hintIcon($icon, $tooltip)`
   overrides it (that's Filament's behavior). Set the icon in PHP with one argument and put the string
-  in lang.
+  in lang. Note: older Filament releases clear the tooltip even with a single argument, so this needs
+  a Filament version that guards `hintIcon()` with `func_num_args()`.
 - **Custom table column types** are not auto-monitored (see [What gets translated](#what-gets-translated));
   use the `conventionKey()` macro for them. Custom *schema* components can be registered — see
   [Custom schema components](#custom-schema-components).
