@@ -5,6 +5,7 @@ namespace Syriable\Filament\Plugins\Translator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * Writes missing convention keys back to the application's lang files.
@@ -61,6 +62,13 @@ class MissingTranslationKeyWriter
 
         $path = lang_path("{$locale}/{$group}.php");
 
+        // Defend against a malicious convention key (e.g. one set via `conventionKey('../../...')`)
+        // escaping the lang directory. The group legitimately contains `/` for nested lang folders,
+        // so reject traversal/null bytes and confirm the resolved path stays inside lang_path().
+        if (! $this->isPathWithinLang($path)) {
+            throw new RuntimeException("Refusing to write translation key outside the lang directory: [{$conventionKey}].");
+        }
+
         $translations = $this->readExisting($path);
 
         // Preserve an existing value rather than clobbering it.
@@ -79,6 +87,50 @@ class MissingTranslationKeyWriter
         }
 
         return $path;
+    }
+
+    /**
+     * Confirm the (not-yet-existing) target file resolves to a location inside `lang_path()`,
+     * resolving any `.`/`..` segments lexically so the check works before the file is created.
+     */
+    protected function isPathWithinLang(string $path): bool
+    {
+        if (str_contains($path, "\0")) {
+            return false;
+        }
+
+        $base = $this->canonicalize(lang_path());
+        $target = $this->canonicalize($path);
+
+        return $target === $base || str_starts_with($target, $base . '/');
+    }
+
+    /**
+     * Lexically normalize a filesystem path: convert separators to `/`, drop empty/`.` segments,
+     * and resolve `..` segments without touching the filesystem.
+     */
+    protected function canonicalize(string $path): string
+    {
+        $path = str_replace('\\', '/', $path);
+        $isAbsolute = str_starts_with($path, '/');
+
+        $segments = [];
+
+        foreach (explode('/', $path) as $segment) {
+            if ($segment === '' || $segment === '.') {
+                continue;
+            }
+
+            if ($segment === '..') {
+                array_pop($segments);
+
+                continue;
+            }
+
+            $segments[] = $segment;
+        }
+
+        return ($isAbsolute ? '/' : '') . implode('/', $segments);
     }
 
     /**
